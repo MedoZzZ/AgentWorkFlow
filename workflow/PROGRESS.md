@@ -14,6 +14,7 @@ Updated: 2026-10-08 (Africa/Cairo).
 - Implemented scripts/Preflight.ps1 and scripts/Run-Antigravity.ps1 with persisted dispatch evidence, conversation IDs, timeouts, and duplicate-run protection.
 - Verified the live read-only runner smoke test: RUNNER_OK and the correct README heading. Verified duplicate dispatch rejection. Evidence: runs/runner-smoke-01/.
 - Added execution guidance for Git checkpoints, requirement/evidence mapping, short bug workflows, and milestone improvements.
+- Added editable config.json, explicit model dispatch, effective-settings metadata, and validation of supported configuration values.
 
 These are documentation deliverables; no application implementation or Antigravity execution has occurred.
 

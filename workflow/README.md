@@ -15,6 +15,7 @@ The user sets product direction and accepts the result. The coordinator plans an
 - `ARCHITECTURE.md`: components, data, interfaces, and technical decisions.
 - `CI.md`: clean dependency installation, automated checks, failure handling, and merge requirements.
 - `EXECUTION.md`: preflight, automated CLI dispatch, Git checkpoints, and evidence handling.
+- `config.json` and `CONFIGURATION.md`: editable defaults for the model, mode, timeout, CLI path, and discovery checks.
 - `START-HERE.md`: copying this starter and beginning a new chat.
 - `TASK-TEMPLATE.md`: copy into `tasks/TASK-001.md` for each assignment.
 - `ANTIGRAVITY-HANDOFF.md`: execution instructions and return format.

@@ -1,5 +1,7 @@
 # Running the framework
 
+Edit config.json for shared project defaults; see CONFIGURATION.md. Explicit runner arguments override settings. Default model is gemini-3.8-flash-high, mode is plan, and timeout is 600 seconds. Each run records its effective settings and a config snapshot.
+
 ## Preflight
 
 Run scripts/Preflight.ps1 with -ProjectRoot set to the actual project directory. Inspect the reported Git baseline, existing changes, CLI availability, runtimes, and manifests. It discovers setup; it does not install packages or execute application checks. Fill CI.md with actual commands and run baseline checks before edits.

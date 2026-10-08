@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "antigravity": {
+    "model": "gemini-3.8-flash-high",
+    "mode": "plan",
+    "timeoutSeconds": 600,
+    "cliPath": ""
+  },
+  "preflight": {
+    "runtimeCommands": ["node", "npm", "pnpm", "python", "dotnet", "go"],
+    "manifestFiles": ["package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "pyproject.toml", "requirements.txt", "go.mod", "Cargo.toml"]
+  }
+}
