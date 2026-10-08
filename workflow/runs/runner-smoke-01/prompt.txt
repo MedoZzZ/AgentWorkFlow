@@ -1,0 +1,4 @@
+Project root: E:\Craft Projects\SubAgetns
+Task file: E:\Craft Projects\SubAgetns\workflow\tasks\CONNECTION-SMOKE.md
+Read-only: do not edit files or execute shell commands. Read the task and return the requested report.
+Read relevant project instructions and linked specifications. Report missing access explicitly.

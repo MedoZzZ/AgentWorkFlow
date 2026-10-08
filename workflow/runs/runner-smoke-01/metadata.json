@@ -1,0 +1,11 @@
+{
+  "runId": "runner-smoke-01",
+  "task": "E:\\Craft Projects\\SubAgetns\\workflow\\tasks\\CONNECTION-SMOKE.md",
+  "mode": "plan",
+  "startedUtc": "2026-10-08T13:15:21.7416959Z",
+  "status": "SUCCESS",
+  "conversationId": "56653982-0115-432e-b2eb-05aff56f6ed6",
+  "verification": "verified-read-only-response",
+  "exitCode": 0,
+  "finishedUtc": "2026-10-08T13:15:43.0341742Z"
+}

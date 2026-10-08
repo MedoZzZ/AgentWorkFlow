@@ -1,0 +1,19 @@
+{
+  "projectRoot": "E:\\Craft Projects\\SubAgetns",
+  "cliPath": "C:\\Users\\Mohamed\\AppData\\Local\\agy\\bin\\agy.exe",
+  "cliAvailable": true,
+  "gitRepository": false,
+  "baselineRevision": null,
+  "existingChanges": [],
+  "runtimeCommands": {
+    "node": "C:\\Program Files\\nodejs\\node.exe",
+    "npm": "C:\\Program Files\\nodejs\\npm.ps1",
+    "pnpm": "C:\\Users\\Mohamed\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\bin\\fallback\\pnpm.cmd",
+    "python": "C:\\Users\\Mohamed\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe",
+    "dotnet": "C:\\Program Files\\dotnet\\dotnet.exe",
+    "go": "C:\\Program Files\\Go\\bin\\go.exe"
+  },
+  "manifests": [],
+  "workflowPresent": true,
+  "baselineChecks": "Not run: select the actual project commands in CI.md before implementation."
+}
