@@ -20,12 +20,16 @@ Requirements, use cases, architecture, UI/UX design, tasks, progress, and verifi
 
 ## Roles and lifecycle
 
+![AgentWorkFlow Architecture](image.png)
+
 | Role | Responsibility |
 | --- | --- |
 | You | Describe the problem, choose product direction, review architecture/design, and accept the working result. |
 | AI coordinator | Inspect, clarify, plan, maintain documents, dispatch tasks, review changes, and independently verify results. |
 | Antigravity | Implement assigned work, run permitted checks, and return changes, evidence, and limitations. |
 | Stitch MCP | Produce concrete UI proposals and design references during planning. |
+
+![AgentWorkFlow Flow](Flow.png)
 
 ```mermaid
 flowchart TD
