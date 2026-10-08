@@ -87,3 +87,7 @@ try {
         Remove-Item -LiteralPath $resolvedFixture -Recurse -Force
     }
 }
+# GitHub Actions propagates LASTEXITCODE after the script returns. Expected
+# negative cases (and Git probes without HEAD) must not fail a passing suite.
+# Keep this after finally: assertion or cleanup failures never reach it.
+$global:LASTEXITCODE = 0

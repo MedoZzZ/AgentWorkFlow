@@ -26,6 +26,14 @@ jobs:
       - name: Test evidence verification recovery and executor supervision
         shell: pwsh
         run: ./workflow/scripts/Test-Evidence.ps1
+      - name: Test native Antigravity streaming adapter without model access
+        shell: pwsh
+        run: ./workflow/scripts/Test-Streaming.ps1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test dashboard APIs and SSE
+        run: node --test workflow/dashboard/test/server.test.mjs
       - name: Parse all PowerShell scripts
         shell: pwsh
         run: |

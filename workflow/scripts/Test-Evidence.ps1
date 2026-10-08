@@ -118,3 +118,5 @@ try {
     $prefix = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar
     if ($target.StartsWith($prefix, (Get-WorkflowPathComparison)) -and (Split-Path $target -Leaf) -like 'agentworkflow-evidence-*') { Remove-Item -LiteralPath $target -Recurse -Force }
 }
+# Reset expected native failure codes only after every check and cleanup passes.
+$global:LASTEXITCODE = 0

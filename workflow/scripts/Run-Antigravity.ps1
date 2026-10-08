@@ -9,6 +9,7 @@ param(
     [string]$CliPath,
     [ValidatePattern('^[a-zA-Z0-9._-]+$')][string]$Model,
     [ValidateRange(0,20)][int]$MaxRepairAttempts = 3,
+    [switch]$Stream,
     [string]$ConfigPath
 )
 $ErrorActionPreference = 'Stop'
@@ -80,6 +81,7 @@ if (-not [IO.Directory]::Exists($runDir)) {
     $metadata['maxRepairAttempts'] = $MaxRepairAttempts
     $metadata['processId'] = $PID
     $metadata['outcome'] = 'running'
+    $metadata['outputFormat'] = if ($Stream) { 'stream-json' } else { 'json' }
     if ($taskData) { $metadata['taskId'] = $taskData.taskId }
     if ($taskData -and $Mode -eq 'accept-edits') {
         $attemptId = [guid]::NewGuid().ToString('N')
@@ -92,15 +94,22 @@ if (-not [IO.Directory]::Exists($runDir)) {
     $taskScopeHash = Get-WorkflowTaskScopeHash $task
     Copy-Item -LiteralPath $task -Destination (Join-Path $runDir 'task-at-dispatch.md')
     $taskHeader = if ($taskData) { [regex]::Match([IO.File]::ReadAllText($task), $script:TaskHeaderPattern).Value } else { $null }
-    $arguments = @('-p',$prompt,'--mode',$Mode,'--model',$Model,'--output-format','json','--print-timeout',"${TimeoutSeconds}s")
+    $arguments = @('-p',$prompt,'--mode',$Mode,'--model',$Model,'--output-format',$metadata.outputFormat,'--print-timeout',"${TimeoutSeconds}s")
     if ($ConversationId) { $arguments += @('--conversation',$ConversationId) }
-    $execution = Invoke-WorkflowExecutor -CliPath $CliPath -Arguments $arguments -ProjectRoot $root -RunDirectory $runDir -TimeoutSeconds $TimeoutSeconds -OnStarted {
+    $execution = Invoke-WorkflowExecutor -CliPath $CliPath -Arguments $arguments -ProjectRoot $root -RunDirectory $runDir -TimeoutSeconds $TimeoutSeconds -Stream:$Stream -OnStarted {
         param($executorPid, $executorStartedUtc)
         $metadata['executorProcessId'] = $executorPid
         $metadata['executorStartedUtc'] = $executorStartedUtc
         Write-WorkflowJson $metaPath $metadata
+    } -OnEvent {
+        param($cliEvent)
+        if ($cliEvent.event -eq 'init' -and $cliEvent.conversation_id) {
+            $metadata.conversationId = $cliEvent.conversation_id
+            Write-WorkflowJson $metaPath $metadata
+        }
     }
     $exitCode = $execution.exitCode
+    if ($execution.conversationId) { $metadata.conversationId = $execution.conversationId }
     Copy-Item -LiteralPath $task -Destination (Join-Path $runDir 'task-at-return.md')
     $metadata['exitCode'] = $exitCode
     $metadata['finishedUtc'] = [DateTime]::UtcNow.ToString('o')
@@ -129,6 +138,7 @@ if (-not [IO.Directory]::Exists($runDir)) {
     $dispatchError = $_
     if ($metadata -and $metaPath) {
         if ($dispatchError.Exception -is [TimeoutException]) { $metadata.status = 'interrupted' }
+        elseif ($dispatchError.Exception.Message -like 'Invalid streaming output*') { $metadata.status = 'invalid-output' }
         elseif ($metadata.status -in @('running','SUCCESS')) { $metadata.status = 'failed' }
         $metadata['outcome'] = $metadata.status
         $metadata['error'] = $_.Exception.Message

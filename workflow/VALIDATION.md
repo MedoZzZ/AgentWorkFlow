@@ -3,6 +3,10 @@
 Date: 2026-10-09 (Africa/Cairo).
 Local environment: Windows, PowerShell 7.6.5.
 
+Dashboard increment: all four PowerShell suites passed locally (configuration, lifecycle, evidence, and native streaming), together with all eight Node dashboard tests (Node 22.16.0). Parsing and diff checks passed. Browser QA covered real project views, mobile layout, and an isolated streamed-response/reconnect/tool-output fixture. The real Antigravity attempt produced a network-blocked ERROR event that the page displayed; network-enabled verification was rejected by automatic approval review pending explicit payload authorization. See DASHBOARD.md. Hosted CI and Linux dashboard execution are pending.
+
+CI exit-code follow-up: reproduced a passing configuration suite whose CI-style wrapper failed from a leftover native exit code. All three suites now clear LASTEXITCODE only after successful checks and cleanup. Each passed in a separate local pwsh process with the CI-style exit-code propagation. A copied suite with intentionally invalid configuration still exited 1. Hosted Linux rerun remains pending; the user supplied a Linux log showing PASS followed by process exit 1.
+
 | Check | Result | Scope |
 | --- | --- | --- |
 | Test-Configuration.ps1 | Passed | Defaults/overrides, CLI flags, duplicate IDs, invalid config, denied/empty/crashed/malformed/schema-invalid responses, nonzero exits, process locking |

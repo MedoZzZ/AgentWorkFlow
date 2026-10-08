@@ -158,6 +158,10 @@ Respect existing architecture and design conventions. For nonvisual projects, sp
 
 ## Executing tasks
 
+### Local project dashboard
+
+Run `node ./workflow/dashboard/server.mjs --project-root '<your project path>'`, then open http://127.0.0.1:4317. The read-only page shows project progress, tasks, verification, documents, and recorded conversations. Add `-Stream` to the existing runner for live prompt/response/tool activity over SSE; JSON mode stays compatible. See [DASHBOARD.md](workflow/DASHBOARD.md) for commands and validation limits.
+
 ### Editable configuration
 
 Edit [workflow/config.json](workflow/config.json) for project-wide defaults: model, mode, timeout, CLI path, and preflight command/manifest discovery. The starter defaults to `gemini-3.8-flash-high`, `plan` mode, and 600 seconds. Per-run arguments override these settings. Both scripts accept `-ConfigPath` to use a different complete config, including a shared defaults file. See [CONFIGURATION.md](workflow/CONFIGURATION.md).
@@ -218,6 +222,7 @@ Replace example paths with your project. Use a unique run ID for each intentiona
 | `Model` | Optional model slug overriding config. |
 | `ConfigPath` | Optional alternate complete configuration file. |
 | `MaxRepairAttempts` | Managed task repair budget, default 3 after the initial attempt; range 0–20. |
+| `Stream` | Opt in to live NDJSON event capture and SSE dashboard updates; JSON remains the default. |
 
 ### Saved evidence
 

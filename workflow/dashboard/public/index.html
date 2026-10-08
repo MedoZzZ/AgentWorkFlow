@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AgentWorkFlow · Project dashboard</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
+<body>
+<a class="skip" href="#main">Skip to project dashboard</a>
+<aside class="sidebar">
+  <a class="brand" href="/"><span class="brand-mark">a<span>›</span></span><span>AgentWorkFlow<small>DEVELOPER WORKSPACE</small></span></a>
+  <div class="project-label">CURRENT PROJECT</div>
+  <div class="project-box"><span class="project-icon">⌘</span><div><strong id="project-name">Loading project…</strong><small>Local workspace</small></div><span class="local-dot"></span></div>
+  <nav aria-label="Dashboard sections">
+    <button class="nav active" data-view="overview"><span>◈</span>Overview</button>
+    <button class="nav" data-view="tasks"><span>▤</span>Tasks <b id="nav-tasks">0</b></button>
+    <button class="nav" data-view="conversations"><span>☷</span>Conversations <b id="nav-runs">0</b></button>
+    <button class="nav" data-view="verification"><span>✓</span>Verification</button>
+    <button class="nav" data-view="documents"><span>▧</span>Project documents</button>
+  </nav>
+  <div class="sidebar-note"><span class="eyebrow">CONNECTED WORKFLOW</span><p><span class="role-dot mint"></span>Codex <small>Coordinator</small></p><p><span class="role-dot purple"></span>Antigravity <small>Executor</small></p><p><span class="role-dot blue"></span>Stitch <small>Design references</small></p></div>
+  <div class="sidebar-foot"><span class="local-dot"></span>Local · read-only<span>v1</span></div>
+</aside>
+<div class="workspace">
+  <header class="topbar"><div class="breadcrumb">Workspace <span>/</span><strong id="breadcrumb-project">Project</strong></div><div class="connection"><span id="connection-dot" class="local-dot"></span><span id="connection" role="status">Connecting…</span><button id="refresh" class="icon-button" aria-label="Refresh project">↻</button></div></header>
+  <main id="main" tabindex="-1">
+    <div class="page-heading"><div><div class="eyebrow">WORKFLOW OBSERVATORY</div><h1 id="page-title">Project overview</h1><p id="page-subtitle">From the first requirement to independently verified work.</p></div><div class="read-only-pill">◉ &nbsp; Live project evidence</div></div>
+    <div id="notice" class="notice" role="status" hidden></div>
+    <section id="overview" class="view">
+      <div class="metrics" id="metrics"></div>
+      <div class="overview-grid">
+        <section class="panel lifecycle-panel"><div class="panel-heading"><div><h2>Workflow at a glance</h2><p>Actual task states from your project files</p></div><span class="badge neutral">FILE-BASED</span></div><div id="lifecycle" class="lifecycle"></div><div class="panel-footer"><span class="local-dot"></span>Execution and verification are tracked separately.</div></section>
+        <section class="panel"><div class="panel-heading"><div><h2>Needs attention</h2><p>Blockers, repairs, and pending reviews</p></div><span class="attention-icon">↗</span></div><div id="attention" class="card-list"></div></section>
+        <section class="panel progress-panel"><div class="panel-heading"><div><h2>Project progress</h2><p>Decisions and next steps recorded by the coordinator</p></div><button class="text-button" data-view="documents">View documents ↗</button></div><div id="progress" class="progress-content"></div></section>
+        <section class="panel"><div class="panel-heading"><div><h2>Recent activity</h2><p>Recorded executor runs</p></div><button class="text-button" data-view="conversations">View all ↗</button></div><div id="recent" class="card-list"></div></section>
+      </div>
+    </section>
+    <section id="tasks" class="view" hidden><div class="toolbar"><label class="search-label">Filter tasks<input id="task-search" type="search" placeholder="Task title or ID…"></label><label>Status<select id="task-filter"><option value="">All states</option><option>ready</option><option>in-progress</option><option>ready-for-verification</option><option>verified</option><option>needs-fix</option><option>blocked</option><option>failed</option><option>interrupted</option><option>draft</option><option>unmanaged</option></select></label></div><div id="task-list" class="task-grid"></div><section id="task-detail" class="panel" hidden></section></section>
+    <section id="conversations" class="view" hidden>
+      <div class="conversation-grid"><section class="panel run-sidebar"><div class="panel-heading"><div><h2>Conversation history</h2><p>Workflow turns grouped by conversation</p></div></div><div id="run-list"></div></section>
+      <section class="panel transcript-panel"><div class="panel-heading"><div><h2 id="conversation-title">Select a run</h2><p id="conversation-subtitle">Prompts, responses, and tool activity</p></div><span id="run-connection" class="badge neutral">WAITING</span></div><div class="transcript-toolbar"><label><input id="auto-scroll" type="checkbox" checked>Follow updates</label><label><input id="show-diagnostics" type="checkbox">Diagnostics</label><button id="reconnect" class="text-button">Reconnect</button></div><div id="transcript" class="transcript" aria-label="Antigravity conversation"></div><div id="diagnostics" class="diagnostics" hidden><h3>CLI diagnostics</h3><pre id="diagnostics-text"></pre></div><div class="panel-footer"><span class="local-dot"></span><span id="transcript-status">Waiting for a selected run</span></div></section>
+      <aside class="panel inspector"><div class="panel-heading"><h2>Run details</h2></div><div id="run-detail"></div><div id="changed-files"></div></aside></div>
+    </section>
+    <section id="verification" class="view" hidden><div id="verification-list" class="task-grid"></div><section id="verification-detail" class="panel" hidden></section></section>
+    <section id="documents" class="view" hidden><div class="document-grid"><section class="panel document-nav" id="document-list"></section><article class="panel document-content"><div class="panel-heading"><div><h2 id="document-title">Project documents</h2><p>Persistent context for your next development session</p></div></div><div id="document-content" class="markdown"></div></article></div></section>
+    <footer class="page-footer"><span id="project-path"></span><span>Source: workflow files · No synthetic progress</span></footer>
+  </main>
+</div>
+</body></html>

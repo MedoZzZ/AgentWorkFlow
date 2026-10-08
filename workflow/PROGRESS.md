@@ -4,6 +4,9 @@ Updated: 2026-10-09 (Africa/Cairo).
 
 ## Done
 
+- Implemented the user-approved local read-only developer dashboard: project progress, task/dependency/history views, conversation-grouped prompts/responses/tool events through SSE, verification evidence, and documents. Added opt-in native CLI streaming while retaining JSON-mode compatibility.
+- Dashboard launch instructions, Stitch reference, streaming tests, browser QA, and live CLI smoke-test limitations are recorded in DASHBOARD.md. Hosted CI is still pending.
+
 - Added file snapshots, changed-file evidence, task copies, separate run outcomes, native executor process supervision, and an Antigravity adapter interface.
 - Added structured independent verification, required-check gating, scoped dependency freshness, bounded repairs, conversation ownership checks, interrupted-task reconciliation, and generated progress summaries.
 - Windows configuration, lifecycle, and evidence suites passed, including native process IO/timeout tests. These tests use mocks/local pwsh, not a live Antigravity model.
@@ -51,7 +54,7 @@ Framework enhancements are implemented with local Windows coverage. Remaining va
 - Antigravity editing, scoped test execution, and continuation verified in the isolated pilot. Real projects need scoped command permissions. Native skill loading remains untested.
 - First application project and requirements: not yet selected.
 - Skill loading in Antigravity: not yet established; provide explicit guidance in the handoff until verified.
-- Stitch: tool definitions inspected; project-specific access/generation has not been tested. No design generated for the starter.
+- Stitch dashboard reference generated; see DASHBOARD.md for project/screen IDs and implementation adaptations.
 - CI: guidance ready; application stack, repository host, hosted pipeline, and merge protections are not configured yet.
 
 ## Task summary
