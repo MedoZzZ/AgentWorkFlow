@@ -20,7 +20,7 @@ Record actual results in the Executor result section of the task file. Include c
 
 Follow CI.md for pipeline assignments and required project checks. Preserve failure exit codes. Diagnose install, lockfile, runtime, path, test, and build errors rather than bypassing them. Return hosted run references when available and distinguish hosted results from local checks.
 
-If implementation and checks are complete, set status to ready-for-verification. The coordinator decides whether the task is verified. If blocked, record the exact blocker and what is needed to resume. Do not begin another task unless assigned.
+If implementation and checks are complete, report ready-for-verification. For managed tasks the runner owns the workflow-task JSON header and Status line: do not edit them. Fill the Executor result section. The coordinator records independent verification; do not invoke state/verification commands yourself. If blocked, record the blocker and resume condition. Do not begin another task unless assigned.
 
 For a repair round, address the coordinator's observed failure and rerun the failed check plus relevant regressions. Keep previous evidence in the repair history.
 

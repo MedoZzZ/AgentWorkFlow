@@ -20,6 +20,8 @@ An OS-held active.lock prevents different run IDs from running concurrently in t
 
 ## Git and context
 
+Managed tasks persist transitions and attempts and refresh a marked progress summary. Native timeouts, file snapshots, structured verification, dependency freshness, repair limits, and Recover-Task inspection are documented in VERIFICATION.md. Legacy tasks remain unmanaged. Antigravity-Adapter.ps1 separates invocation/normalization from lifecycle/evidence logic.
+
 Capture the baseline before editing. Preserve existing user work. Use small, reviewed commits as checkpoints when Git is available and the project permits it; avoid automatic reset or rollback. One executor at a time initially. Load only relevant specs and task context. Add a short project instruction file pointing to this workflow without overwriting existing instructions.
 
 ## Scope and evidence
@@ -34,4 +36,4 @@ Copy templates and scripts to new projects. Exclude workflow/runs, workflow/task
 
 ## Verification performed on the starter
 
-Preflight ran against the starter directory and correctly reported the available CLI, no Git repository, and no application manifests. A live read-only dispatch returned RUNNER_OK and the exact README heading. A repeated run ID was rejected before CLI invocation. Evidence is in runs/runner-smoke-01/. Implementation edits, command permissions, timeout recovery, and conversation continuation have not been exercised yet; verify those when relevant to the first project.
+Historical preflight and read-only smoke checks are described in CONNECTION-TEST.md. The isolated implementation pilot subsequently exercised edits, scoped test execution, and conversation continuation; see PILOT-REPORT.md. Live timeout recovery remains unverified. Managed task lifecycle checks are documented in TASK-STATE.md; they do not establish live executor or hosted CI behavior.

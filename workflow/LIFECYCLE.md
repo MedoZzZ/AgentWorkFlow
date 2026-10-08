@@ -46,6 +46,8 @@ When release is authorized, document deployment steps and recovery approach, rel
 
 ## Task states
 
+Managed task headers enforce [TASK-STATE.md](TASK-STATE.md). Use Set-TaskStatus.ps1 for coordinator transitions and Record-Verification.ps1 for verified verdicts; the runner manages execution attempts. [VERIFICATION.md](VERIFICATION.md) covers structured evidence, bounded repairs, and recovery inspection. Headerless legacy tasks remain unmanaged.
+
 `draft -> ready -> in-progress -> ready-for-verification -> verified`
 
 Verification failures: `ready-for-verification -> needs-fix -> in-progress`.

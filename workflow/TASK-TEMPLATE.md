@@ -1,3 +1,14 @@
+<!-- workflow-task
+{
+  "schemaVersion": 1,
+  "taskId": "TASK-NNN",
+  "status": "draft",
+  "approval": "",
+  "dependencies": [],
+  "attempts": [],
+  "history": []
+}
+-->
 # TASK-NNN: Outcome
 
 Status: draft

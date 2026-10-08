@@ -8,10 +8,15 @@ param(
     [string]$ConversationId,
     [string]$CliPath,
     [ValidatePattern('^[a-zA-Z0-9._-]+$')][string]$Model,
+    [ValidateRange(0,20)][int]$MaxRepairAttempts = 3,
     [string]$ConfigPath
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Platform.ps1')
+. (Join-Path $PSScriptRoot 'Task-State.ps1')
+. (Join-Path $PSScriptRoot 'Evidence.ps1')
+. (Join-Path $PSScriptRoot 'Antigravity-Adapter.ps1')
+. (Join-Path $PSScriptRoot 'Progress.ps1')
 $root = (Resolve-Path -LiteralPath $ProjectRoot).Path
 if (-not $ConfigPath) { $ConfigPath = Join-Path $root 'workflow/config.json' }
 $config = & (Join-Path $PSScriptRoot 'Read-Config.ps1') -ConfigPath $ConfigPath
@@ -31,61 +36,125 @@ $projectLock = $null
 $lock = $null
 $metadata = $null
 $metaPath = $null
+$taskData = $null
+$attemptId = $null
 # OS-held lock prevents different run IDs from editing the same project at once.
 try { $projectLock = [IO.File]::Open((Join-Path $root 'workflow/runs/active.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::Write, [IO.FileShare]::None) }
 catch { throw 'Another dispatch is active for this project. Wait for it to finish before starting another.' }
 try {
+foreach ($file in (Get-ChildItem -LiteralPath (Split-Path $runDir) -Filter metadata.json -Recurse -File)) {
+    $previousRun = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
+    if ($previousRun.status -eq 'running') { throw "An unreconciled run remains: $($previousRun.runId). Inspect its process and evidence before dispatching." }
+}
+$taskData = Read-WorkflowTask -Path $task -AllowLegacy
+if ($taskData -and $Mode -eq 'accept-edits') {
+    if ($taskData.status -notin @('ready','needs-fix')) { throw "Task cannot execute from status: $($taskData.status)" }
+    Assert-WorkflowTaskReady -ProjectRoot $root -TaskPath $task -Data $taskData
+    if ($taskData.attempts.Count -ge (1 + $MaxRepairAttempts)) { throw 'Repair attempt limit reached. Diagnose and obtain approval for a revised task before continuing.' }
+    if ($ConversationId) {
+        $knownConversation = $false
+        foreach ($file in (Get-ChildItem -LiteralPath (Split-Path $runDir) -Filter metadata.json -Recurse -File)) {
+            $previous = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
+            if ($previous.taskId -eq $taskData.taskId -and $previous.conversationId -eq $ConversationId) { $knownConversation = $true }
+        }
+        if (-not $knownConversation) { throw 'Conversation ID is not recorded for this managed task.' }
+    }
+}
 # Atomic directory creation refuses duplicate run IDs, including concurrent launches.
 if (-not [IO.Directory]::Exists($runDir)) {
     $claim = Join-Path (Split-Path $runDir) "$RunId.lock"
     $lock = [IO.File]::Open($claim, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
 } else { throw 'Run ID already exists. Inspect its evidence before assigning a new run ID.' }
     New-Item -ItemType Directory -Path $runDir | Out-Null
+    $before = Get-WorkflowSnapshot -ProjectRoot $root
+    Write-WorkflowJson -Path (Join-Path $runDir 'before.json') -Value $before
     & (Join-Path $PSScriptRoot 'Preflight.ps1') -ProjectRoot $root -ConfigPath $ConfigPath | Set-Content -LiteralPath (Join-Path $runDir 'preflight.json') -Encoding utf8
     $config | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $runDir 'config.json') -Encoding utf8
     $instruction = if ($Mode -eq 'plan') { 'Read-only: do not edit files or execute shell commands. Read the task and return the requested report.' } else { 'Execute only the assigned task. Record actual checks and evidence in its Executor result section. Mark ready-for-verification only; never verified. Preserve existing user changes.' }
+    if ($taskData) { $instruction += ' The runner owns the workflow-task JSON header and Status line: do not edit them. Report your result in the Executor result section.' }
     $prompt = "Project root: $root`nTask file: $task`n$instruction`nRead workflow/ANTIGRAVITY-HANDOFF.md if present, relevant project instructions, and linked specifications. Report missing access explicitly."
     $prompt | Set-Content -LiteralPath (Join-Path $runDir 'prompt.txt') -Encoding utf8
     $metadata = [ordered]@{ runId=$RunId; task=$task; mode=$Mode; model=$Model; timeoutSeconds=$TimeoutSeconds; cliPath=$CliPath; configPath=(Resolve-Path -LiteralPath $ConfigPath).Path; startedUtc=[DateTime]::UtcNow.ToString('o'); status='running'; conversationId=$ConversationId; verification='pending' }
     $metaPath = Join-Path $runDir 'metadata.json'
-    $metadata | ConvertTo-Json | Set-Content -LiteralPath $metaPath -Encoding utf8
+    $metadata['taskManagement'] = if ($taskData) { 'managed' } else { 'legacy-unmanaged' }
+    $metadata['maxRepairAttempts'] = $MaxRepairAttempts
+    $metadata['processId'] = $PID
+    $metadata['outcome'] = 'running'
+    if ($taskData) { $metadata['taskId'] = $taskData.taskId }
+    if ($taskData -and $Mode -eq 'accept-edits') {
+        $attemptId = [guid]::NewGuid().ToString('N')
+        $metadata['attemptId'] = $attemptId
+        $taskData.attempts += @{attemptId=$attemptId; runId=$RunId; startedUtc=$metadata.startedUtc}
+        Set-WorkflowTaskTransition -Path $task -Data $taskData -Status 'in-progress' -Reason "Dispatch: workflow/runs/$RunId" -RunId $RunId -AttemptId $attemptId
+    }
+    Write-WorkflowJson $metaPath $metadata
+    $taskFileHash = (Get-FileHash -LiteralPath $task -Algorithm SHA256).Hash
+    $taskScopeHash = Get-WorkflowTaskScopeHash $task
+    Copy-Item -LiteralPath $task -Destination (Join-Path $runDir 'task-at-dispatch.md')
+    $taskHeader = if ($taskData) { [regex]::Match([IO.File]::ReadAllText($task), $script:TaskHeaderPattern).Value } else { $null }
     $arguments = @('-p',$prompt,'--mode',$Mode,'--model',$Model,'--output-format','json','--print-timeout',"${TimeoutSeconds}s")
     if ($ConversationId) { $arguments += @('--conversation',$ConversationId) }
-    Push-Location -LiteralPath $root
-    try {
-        & $CliPath @arguments 1> (Join-Path $runDir 'stdout.json') 2> (Join-Path $runDir 'stderr.log')
-        $exitCode = $LASTEXITCODE
-    } finally { Pop-Location }
+    $execution = Invoke-WorkflowExecutor -CliPath $CliPath -Arguments $arguments -ProjectRoot $root -RunDirectory $runDir -TimeoutSeconds $TimeoutSeconds -OnStarted {
+        param($executorPid, $executorStartedUtc)
+        $metadata['executorProcessId'] = $executorPid
+        $metadata['executorStartedUtc'] = $executorStartedUtc
+        Write-WorkflowJson $metaPath $metadata
+    }
+    $exitCode = $execution.exitCode
+    Copy-Item -LiteralPath $task -Destination (Join-Path $runDir 'task-at-return.md')
     $metadata['exitCode'] = $exitCode
     $metadata['finishedUtc'] = [DateTime]::UtcNow.ToString('o')
-    try {
-        $result = Get-Content -LiteralPath (Join-Path $runDir 'stdout.json') -Raw | ConvertFrom-Json
-        $metadata.status = $result.status
-        $metadata.conversationId = $result.conversation_id
-        if (@($result.denied_actions).Count -gt 0 -and $null -ne $result.denied_actions) {
-            $metadata['executorStatus'] = $result.status
-            $metadata.status = 'blocked-permissions'
-            $metadata['deniedActions'] = $result.denied_actions
-        } elseif ($result.status -eq 'SUCCESS' -and [string]::IsNullOrWhiteSpace([string]$result.response)) {
-            $metadata.status = 'empty-response'
-        }
-    } catch { $metadata.status = 'invalid-output' }
-    if ($exitCode -ne 0 -and $metadata.status -eq 'SUCCESS') {
-        $metadata['executorStatus'] = 'SUCCESS'
-        $metadata.status = 'failed'
-    }
-    $metadata | ConvertTo-Json | Set-Content -LiteralPath $metaPath -Encoding utf8
-    $metadata | ConvertTo-Json
+    $result = Read-WorkflowExecutorResult -Path (Join-Path $runDir 'stdout.json') -ExitCode $exitCode
+    $metadata.status = $result.status
+    $metadata['executorStatus'] = $result.executorStatus
+    if ($result.conversationId) { $metadata.conversationId = $result.conversationId }
+    if ($result.deniedActions) { $metadata['deniedActions'] = $result.deniedActions }
+    $after = Get-WorkflowSnapshot -ProjectRoot $root
+    Write-WorkflowJson -Path (Join-Path $runDir 'after.json') -Value $after
+    $changes = Compare-WorkflowSnapshot -Before $before -After $after
+    Write-WorkflowJson -Path (Join-Path $runDir 'changes.json') -Value @{changes=$changes}
+    if ($Mode -eq 'plan' -and ($changes.Count -or (Get-FileHash -LiteralPath $task -Algorithm SHA256).Hash -ne $taskFileHash)) { $metadata.status = 'unexpected-plan-changes' }
+    if ($taskHeader -and [regex]::Match([IO.File]::ReadAllText($task), $script:TaskHeaderPattern).Value -cne $taskHeader) { $metadata.status = 'unexpected-task-state-change' }
+    elseif ($taskData -and (Get-WorkflowTaskScopeHash $task) -ne $taskScopeHash) { $metadata.status = 'unexpected-task-scope-change' }
+    $metadata['outcome'] = if ($metadata.status -eq 'SUCCESS') { if ($Mode -eq 'plan') { 'planned' } else { 'ready-for-verification' } } else { $metadata.status }
+    Write-WorkflowJson $metaPath $metadata
     if ($exitCode -ne 0 -or $metadata.status -ne 'SUCCESS') { throw "Dispatch did not complete successfully. Inspect $runDir. Do not retry automatically." }
+    if ($attemptId) {
+        $taskData.attempts[-1]['finishedUtc'] = $metadata.finishedUtc
+        $taskData.attempts[-1]['outcome'] = 'ready-for-verification'
+        Set-WorkflowTaskTransition -Path $task -Data $taskData -Status 'ready-for-verification' -Reason "Executor completed; independent verification pending: workflow/runs/$RunId" -RunId $RunId -AttemptId $attemptId
+    }
+    $metadata | ConvertTo-Json -Depth 20
 } catch {
+    $dispatchError = $_
     if ($metadata -and $metaPath) {
-        if ($metadata.status -eq 'running') { $metadata.status = 'failed' }
+        if ($dispatchError.Exception -is [TimeoutException]) { $metadata.status = 'interrupted' }
+        elseif ($metadata.status -in @('running','SUCCESS')) { $metadata.status = 'failed' }
+        $metadata['outcome'] = $metadata.status
         $metadata['error'] = $_.Exception.Message
         $metadata['finishedUtc'] = [DateTime]::UtcNow.ToString('o')
-        $metadata | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $metaPath -Encoding utf8
+        Write-WorkflowJson $metaPath $metadata
     }
-    throw
+    if ($attemptId -and $taskData.status -eq 'in-progress') {
+        $failureState = if ($metadata.status -eq 'blocked-permissions') { 'blocked' } elseif ($metadata.status -eq 'interrupted') { 'interrupted' } else { 'failed' }
+        $taskData.attempts[-1]['finishedUtc'] = $metadata.finishedUtc
+        $taskData.attempts[-1]['outcome'] = $failureState
+        try { Set-WorkflowTaskTransition -Path $task -Data $taskData -Status $failureState -Reason $dispatchError.Exception.Message -RunId $RunId -AttemptId $attemptId }
+        catch { $metadata['taskStateError'] = $_.Exception.Message; Write-WorkflowJson $metaPath $metadata }
+    }
+    throw $dispatchError
 } finally {
+    if ($metadata -and (Test-Path -LiteralPath $task) -and -not (Test-Path -LiteralPath (Join-Path $runDir 'task-at-return.md'))) { Copy-Item -LiteralPath $task -Destination (Join-Path $runDir 'task-at-return.md') }
+    if ($metadata -and $metaPath -and -not (Test-Path -LiteralPath (Join-Path $runDir 'after.json'))) {
+        try {
+            $after = Get-WorkflowSnapshot -ProjectRoot $root
+            Write-WorkflowJson -Path (Join-Path $runDir 'after.json') -Value $after
+            Write-WorkflowJson -Path (Join-Path $runDir 'changes.json') -Value @{changes=(Compare-WorkflowSnapshot $before $after)}
+        } catch { $metadata['evidenceError'] = $_.Exception.Message; Write-WorkflowJson -Path $metaPath -Value $metadata }
+    }
+    if ($taskData -and $metadata) {
+        try { Sync-WorkflowProgress $root } catch { $metadata['progressError'] = $_.Exception.Message; Write-WorkflowJson $metaPath $metadata }
+    }
     if ($lock) { $lock.Dispose() }
     if ($projectLock) { $projectLock.Dispose() }
 }

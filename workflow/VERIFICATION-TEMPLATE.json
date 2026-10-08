@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "taskId": "TASK-NNN",
+  "runId": "TASK-NNN-01",
+  "verdict": "blocked",
+  "diffReviewed": false,
+  "testChangesReviewed": false,
+  "unexpectedChangesReviewed": false,
+  "testedFingerprint": "capture-after-independent-checks",
+  "taskScopeHash": "capture-after-independent-checks",
+  "scope": ["src/example.js"],
+  "checks": [
+    {"name": "Independent regression command", "status": "unavailable", "required": true, "evidence": "Not run yet"}
+  ],
+  "acceptanceCriteria": [
+    {"name": "AC-1", "status": "unavailable", "required": true, "evidence": "Not checked yet"}
+  ]
+}

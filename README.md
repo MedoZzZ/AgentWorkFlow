@@ -178,6 +178,8 @@ Preflight does not install dependencies, verify authentication/runtime versions,
 
 ### Prepare a task
 
+New tasks include a machine-readable state header. Record approval and dependencies, then use `Set-TaskStatus.ps1` to mark the task ready. The runner enforces eligibility and preserves attempt history for these managed tasks. See [TASK-STATE.md](workflow/TASK-STATE.md) for commands, transitions, and legacy compatibility.
+
 Copy [TASK-TEMPLATE.md](workflow/TASK-TEMPLATE.md) into `workflow/tasks/TASK-001.md`. The coordinator fills the goal, requirement IDs, dependencies, relevant context, numbered instructions, acceptance checks, and expected evidence. Start only when dependencies are verified.
 
 ### Dispatch a read-only assignment
@@ -215,6 +217,7 @@ Replace example paths with your project. Use a unique run ID for each intentiona
 | `CliPath` | Optional explicit CLI executable path. |
 | `Model` | Optional model slug overriding config. |
 | `ConfigPath` | Optional alternate complete configuration file. |
+| `MaxRepairAttempts` | Managed task repair budget, default 3 after the initial attempt; range 0–20. |
 
 ### Saved evidence
 
@@ -231,7 +234,7 @@ Every run creates `workflow/runs/<RunId>/`:
 
 A permanent `<RunId>.lock` rejects reuse of that ID. An OS-held `active.lock` also prevents different IDs from running concurrently in the same project. Its file may remain after a run; the exclusive handle releases when the process exits.
 
-The runner does not schedule repairs or automatically update PROGRESS.md. The coordinator reviews results and updates task/progress records. Inspect logs and actual files after a timeout or interruption before dispatching again; execution may have already made changes.
+The runner does not schedule repairs. Managed task changes refresh a marked PROGRESS.md summary while preserving notes. Runs capture file snapshots, changes, and task copies; native CLI processes have a runner-enforced timeout. Independent verification, stale dependency checks, repair limits, and recovery are described in [VERIFICATION.md](workflow/VERIFICATION.md). Inspect logs and actual files after interruption before dispatching again.
 
 ## Verification and repairs
 

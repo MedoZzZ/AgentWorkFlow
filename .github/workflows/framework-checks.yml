@@ -20,6 +20,12 @@ jobs:
       - name: Test configuration and runner failures without model access
         shell: pwsh
         run: ./workflow/scripts/Test-Configuration.ps1
+      - name: Test managed task lifecycle without model access
+        shell: pwsh
+        run: ./workflow/scripts/Test-TaskState.ps1
+      - name: Test evidence verification recovery and executor supervision
+        shell: pwsh
+        run: ./workflow/scripts/Test-Evidence.ps1
       - name: Parse all PowerShell scripts
         shell: pwsh
         run: |

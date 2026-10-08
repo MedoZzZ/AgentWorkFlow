@@ -1,8 +1,16 @@
 # Progress
 
-Updated: 2026-10-08 (Africa/Cairo).
+Updated: 2026-10-09 (Africa/Cairo).
 
 ## Done
+
+- Added file snapshots, changed-file evidence, task copies, separate run outcomes, native executor process supervision, and an Antigravity adapter interface.
+- Added structured independent verification, required-check gating, scoped dependency freshness, bounded repairs, conversation ownership checks, interrupted-task reconciliation, and generated progress summaries.
+- Windows configuration, lifecycle, and evidence suites passed, including native process IO/timeout tests. These tests use mocks/local pwsh, not a live Antigravity model.
+- Detailed enhancement validation and remaining limitations are recorded in VALIDATION.md.
+
+- Implemented the first approved enhancement increment: managed Markdown task headers, approval/dependency/unique-ID checks, validated state transitions, atomic task writes under the project lock, and separate Task/Run/Attempt identities with preserved history. Legacy headerless tasks remain explicitly unmanaged.
+- Ran Test-TaskState.ps1 and Test-Configuration.ps1 locally on Windows successfully. Added the lifecycle suite to the Windows/Ubuntu CI matrix; hosted results and a new Linux run are pending.
 
 - Read relevant guidance from mattpocock/skills.
 - Drafted lifecycle, project spec template, task template, executor handoff, and skill routing.
@@ -27,6 +35,8 @@ These deliverables include documentation, runner scripts, and a completed isolat
 - Ready to select the first real application project after the isolated pilot passed.
 
 ## Next
+
+Framework enhancements are implemented with local Windows coverage. Remaining validation: hosted Windows/Ubuntu CI, Linux rerun (Ubuntu WSL currently lacks pwsh), and a live Antigravity task using the enhanced adapter. TASK-STATE.md and VERIFICATION.md describe boundaries. User acceptance is pending; no release/deployment is authorized.
 
 1. Identify the Antigravity product/interface and a supported way to hand off work and receive results.
 2. Select the first new project or existing project change and its directory.

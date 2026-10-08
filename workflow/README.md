@@ -15,6 +15,9 @@ The user sets product direction and accepts the result. The coordinator plans an
 - `ARCHITECTURE.md`: components, data, interfaces, and technical decisions.
 - `CI.md`: clean dependency installation, automated checks, failure handling, and merge requirements.
 - `EXECUTION.md`: preflight, automated CLI dispatch, Git checkpoints, and evidence handling.
+- `TASK-STATE.md`: managed task headers, transition commands, and legacy compatibility.
+- `VERIFICATION.md`: file evidence, independent verification, repair limits, recovery, and adapter responsibilities.
+- `VALIDATION.md`: actual enhancement test results and unavailable checks.
 - `LINUX.md`: Linux setup, Bash commands, platform rules, and verification limits. Scripts require PowerShell 7.2+ on Windows and Linux.
 - `config.json` and `CONFIGURATION.md`: editable defaults for the model, mode, timeout, CLI path, and discovery checks.
 - `START-HERE.md`: copying this starter and beginning a new chat.

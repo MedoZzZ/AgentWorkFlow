@@ -30,7 +30,9 @@ try {
         @{name='empty'; body='$global:LASTEXITCODE=0; ''{"status":"SUCCESS","response":""}'''; expected='empty-response'},
         @{name='crash'; body='throw "simulated CLI crash"'; expected='failed'},
         @{name='nonzero'; body='$global:LASTEXITCODE=1; ''{"status":"SUCCESS","response":"misleading success"}'''; expected='failed'},
-        @{name='malformed'; body='$global:LASTEXITCODE=0; ''not-json'''; expected='invalid-output'}
+        @{name='malformed'; body='$global:LASTEXITCODE=0; ''not-json'''; expected='invalid-output'},
+        @{name='missing-status'; body='$global:LASTEXITCODE=0; ''{"response":"done"}'''; expected='invalid-output'},
+        @{name='invalid-response'; body='$global:LASTEXITCODE=0; ''{"status":"SUCCESS","response":42}'''; expected='invalid-output'}
     )) {
         $case.body | Set-Content -LiteralPath $mockCli
         $failed = $false
