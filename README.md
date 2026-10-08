@@ -4,7 +4,7 @@ A reusable framework for creating projects and editing existing ones with an AI 
 
 Requirements, use cases, architecture, UI/UX design, tasks, progress, and verification live in Markdown alongside your project. PowerShell scripts provide preflight checks and Antigravity CLI dispatch with saved execution evidence.
 
-**Current status:** documentation and scripts are available. A live read-only Antigravity task and duplicate-dispatch protection passed testing. Implementation edits, test execution permissions, conversation continuation, and timeout recovery still need validation on a real project. Stitch tool definitions were inspected; project-specific generation was not tested for this starter.
+**Current status:** a live isolated pilot passed implementation, scoped test execution, conversation continuation, follow-up changes, and independent verification. Runner regression tests cover configuration, permissions, failure reporting, and project concurrency. See [PILOT-REPORT.md](workflow/PILOT-REPORT.md). Hosted CI, live timeout recovery, and project-specific Stitch generation remain unverified.
 
 ## Contents
 
@@ -70,13 +70,30 @@ if (Test-Path -LiteralPath $workflowTarget) {
 }
 New-Item -ItemType Directory -Path $workflowTarget -Force | Out-Null
 Get-ChildItem -LiteralPath '.\workflow' -File |
-    Where-Object { $_.Name -ne 'CONNECTION-TEST.md' } |
+    Where-Object { $_.Name -notin @('CONNECTION-TEST.md', 'PILOT-REPORT.md') } |
     Copy-Item -Destination $workflowTarget
 Copy-Item -LiteralPath '.\workflow\scripts' -Destination $workflowTarget -Recurse
 New-Item -ItemType Directory -Path (Join-Path $workflowTarget 'tasks') | Out-Null
 ```
 
 This copies the top-level documents and scripts, leaving old run evidence and tasks behind. Initialize project-specific progress in the new chat; inherited starter history does not mean your application has been implemented or tested.
+
+On Linux, run these commands from the cloned starter in Bash:
+
+```bash
+project_root="$HOME/projects/MyApp"
+workflow_target="$project_root/workflow"
+if [ -e "$workflow_target" ]; then
+  printf '%s\n' 'A workflow already exists. Resume or reconcile it first.' >&2
+else
+  mkdir -p "$workflow_target/tasks"
+  find workflow -maxdepth 1 -type f ! -name CONNECTION-TEST.md ! -name PILOT-REPORT.md \
+    -exec cp -t "$workflow_target" -- {} +
+  cp -R workflow/scripts "$workflow_target/"
+fi
+```
+
+Use the Linux project path in the chat prompt below, for example `/home/yourname/projects/MyApp/workflow`.
 
 ### 2. Start a project chat
 
@@ -94,7 +111,27 @@ Install and authenticate the official [Antigravity CLI](https://antigravity.goog
 agy --help
 ```
 
-Scripts are intended for Windows PowerShell environments and were tested with PowerShell on Windows. The runner searches PATH, then `%LOCALAPPDATA%\agy\bin\agy.exe`; use `-CliPath` for another installation location.
+Scripts support Windows and Linux using **PowerShell 7.2 or later** (`pwsh`). Install it using the official [Windows instructions](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows) or [Linux instructions](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-linux). Windows PowerShell 5.1 is insufficient. Application runtimes depend on your project's stack.
+
+The runner searches PATH, then `%LOCALAPPDATA%\agy\bin\agy.exe` on Windows or `~/.local/bin/agy` on Linux. An explicit `-CliPath` or `antigravity.cliPath` overrides discovery. Keep `cliPath` empty when sharing the starter between machines.
+
+On Linux, install the CLI using its official instructions, authenticate by running `agy`, and confirm access from the same Linux account that will run the workflow. A Windows installation or sign-in does not establish Linux CLI access. For WSL, native Linux project storage (such as `~/projects/MyApp`) is preferred for filesystem behavior and performance.
+
+From Bash, invoke the scripts through `pwsh`; executable bits and a separate Bash runner are unnecessary:
+
+```bash
+project_root="$HOME/projects/MyApp"
+pwsh -NoProfile -File "$project_root/workflow/scripts/Preflight.ps1" \
+  -ProjectRoot "$project_root"
+pwsh -NoProfile -File "$project_root/workflow/scripts/Run-Antigravity.ps1" \
+  -ProjectRoot "$project_root" \
+  -TaskFile "$project_root/workflow/tasks/TASK-001.md" \
+  -RunId TASK-001-round-01
+# After the implementation task is approved, add -Mode accept-edits.
+pwsh -NoProfile -File "$project_root/workflow/scripts/Test-Configuration.ps1"
+```
+
+Windows users can use the PowerShell examples below from a `pwsh` session. The config, task documents, evidence format, and lifecycle are identical on both platforms. Paths and application test commands must match the machine. See [Linux verification](workflow/LINUX.md).
 
 The coordinator needs terminal access and permission to launch the CLI. Antigravity needs project access and permissions for assigned actions. The runner does not bypass permissions. Desktop installation alone does not establish CLI authentication, subscription entitlement, or model availability; check the intended account.
 
@@ -188,7 +225,7 @@ Every run creates `workflow/runs/<RunId>/`:
 | `metadata.json` | Task, timestamps, status, exit code, conversation ID, and pending verification. |
 | `config.json` | Snapshot of parsed framework defaults; effective overrides are in metadata. |
 
-A permanent `<RunId>.lock` rejects reuse of that ID. Different IDs can still run concurrently: keep one executor active initially to avoid overlapping edits.
+A permanent `<RunId>.lock` rejects reuse of that ID. An OS-held `active.lock` also prevents different IDs from running concurrently in the same project. Its file may remain after a run; the exclusive handle releases when the process exits.
 
 The runner does not schedule repairs or automatically update PROGRESS.md. The coordinator reviews results and updates task/progress records. Inspect logs and actual files after a timeout or interruption before dispatching again; execution may have already made changes.
 
@@ -196,7 +233,7 @@ The runner does not schedule repairs or automatically update PROGRESS.md. The co
 
 Antigravity reports `ready-for-verification`. The coordinator inspects the diff, independently runs relevant checks, checks UI behavior when applicable, and records the verdict for the tested revision/file state.
 
-**CLI SUCCESS is not task verification.** Inspect stderr for denied actions and compare actual outcomes against acceptance criteria. Missing, skipped, or unavailable verification is recorded explicitly.
+**CLI SUCCESS is not task verification.** The runner rejects reported denied actions as `blocked-permissions` and blank successful responses as `empty-response`. Caught execution errors become `failed`; malformed JSON becomes `invalid-output`. Inspect stderr and compare actual outcomes against acceptance criteria. Missing, skipped, or unavailable verification is recorded explicitly.
 
 ```text
 draft -> ready -> in-progress -> ready-for-verification -> verified
@@ -211,6 +248,8 @@ For each repair, preserve the observed failure, expected behavior, requested fix
 Map requirement IDs to use cases, screen IDs, tasks, and evidence. Check important negative cases as well as happy paths. Review changes to tests themselves. Use small reviewed Git checkpoints where available and preserve existing user changes. Scripts do not commit, merge, push, reset, or deploy.
 
 ## CI and dependency security
+
+This framework has its own Windows and Ubuntu GitHub Actions matrix in `.github/workflows/framework-checks.yml`. It exercises configuration, runner failures, process locking, and platform path rules using a mock CLI, requiring no model credentials or subscription. Local checks have run; the hosted workflow needs to run after the changes are pushed. Copy or merge this workflow into the application's CI separately if you want these framework checks there; the template-copy commands above copy only `workflow`.
 
 [CI.md](workflow/CI.md) is the project's pipeline specification template, not a preconfigured hosted pipeline. Implement it for the actual stack and provider:
 

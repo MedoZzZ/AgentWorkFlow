@@ -1,11 +1,11 @@
+#requires -Version 7.2
 param([Parameter(Mandatory)][string]$ProjectRoot, [string]$ConfigPath)
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $ProjectRoot).Path
-if (-not $ConfigPath) { $ConfigPath = Join-Path $root 'workflow\config.json' }
+if (-not $ConfigPath) { $ConfigPath = Join-Path $root 'workflow/config.json' }
 $config = & (Join-Path $PSScriptRoot 'Read-Config.ps1') -ConfigPath $ConfigPath
-$cli = Get-Command agy -ErrorAction SilentlyContinue
-$cliPath = if ($cli) { $cli.Source } else { Join-Path $env:LOCALAPPDATA 'agy\bin\agy.exe' }
-if ($config.antigravity.cliPath) { $cliPath = $config.antigravity.cliPath }
+. (Join-Path $PSScriptRoot 'Platform.ps1')
+$cliPath = Resolve-WorkflowCli -ConfiguredPath $config.antigravity.cliPath
 $git = Get-Command git -ErrorAction SilentlyContinue
 $head = $null; $changes = @(); $gitAvailable = $false
 if ($git) {
@@ -22,6 +22,8 @@ foreach ($name in $config.preflight.runtimeCommands) {
 }
 $files = $config.preflight.manifestFiles
 [ordered]@{
+    operatingSystem = [Runtime.InteropServices.RuntimeInformation]::OSDescription
+    powerShellVersion = $PSVersionTable.PSVersion.ToString()
     projectRoot = $root
     configPath = (Resolve-Path -LiteralPath $ConfigPath).Path
     configuredModel = $config.antigravity.model
@@ -32,6 +34,6 @@ $files = $config.preflight.manifestFiles
     existingChanges = $changes
     runtimeCommands = $runtimes
     manifests = @($files | Where-Object { Test-Path -LiteralPath (Join-Path $root $_) })
-    workflowPresent = (Test-Path -LiteralPath (Join-Path $root 'workflow\LIFECYCLE.md'))
+    workflowPresent = (Test-Path -LiteralPath (Join-Path $root 'workflow/LIFECYCLE.md'))
     baselineChecks = 'Not run: select the actual project commands in CI.md before implementation.'
 } | ConvertTo-Json -Depth 5

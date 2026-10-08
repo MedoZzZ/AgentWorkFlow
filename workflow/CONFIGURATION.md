@@ -8,7 +8,7 @@ Edit workflow/config.json once to set defaults for every dispatch in that projec
 | antigravity.model | Explicit model slug; default gemini-3.8-flash-high. Check agy models for current availability. |
 | antigravity.mode | plan (read-only instructions) or accept-edits. Default plan; implementation still follows project review. |
 | antigravity.timeoutSeconds | CLI print timeout, integer 10–3600; default 600. |
-| antigravity.cliPath | Empty for PATH/standard Windows discovery, or an absolute executable path. JSON Windows paths need doubled backslashes, or use forward slashes. |
+| antigravity.cliPath | Empty for PATH/platform discovery (`%LOCALAPPDATA%/agy/bin/agy.exe` on Windows, `~/.local/bin/agy` on Linux), or an absolute executable path. JSON Windows paths need doubled backslashes, or use forward slashes. For Linux overrides use `/home/yourname/.local/bin/agy`; literal `~` is not expanded in JSON. |
 | preflight.runtimeCommands | Command names to discover; does not execute them or verify their versions. |
 | preflight.manifestFiles | Root-level filenames to detect; does not inspect package contents. |
 

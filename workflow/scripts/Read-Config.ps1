@@ -1,3 +1,4 @@
+#requires -Version 7.2
 param([Parameter(Mandatory)][string]$ConfigPath)
 $ErrorActionPreference = 'Stop'
 try { $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json -ErrorAction Stop }

@@ -15,13 +15,16 @@ Updated: 2026-10-08 (Africa/Cairo).
 - Verified the live read-only runner smoke test: RUNNER_OK and the correct README heading. Verified duplicate dispatch rejection. Evidence: runs/runner-smoke-01/.
 - Added execution guidance for Git checkpoints, requirement/evidence mapping, short bug workflows, and milestone improvements.
 - Added editable config.json, explicit model dispatch, effective-settings metadata, and validation of supported configuration values.
+- Added Windows/Linux support using PowerShell 7.2+, shared platform-aware CLI discovery, portable paths, case-sensitive Linux task containment, and LF rules for source files.
+- Passed mock runner tests locally on Windows and Ubuntu WSL (PowerShell 7.4.6 on Linux), including settings, error classification, duplicate IDs, and cross-process locking. Linux also verified case-sensitive task containment.
+- Added Windows/Ubuntu GitHub Actions matrix and Linux setup/copy/dispatch instructions. Hosted CI still needs a push; live Linux CLI authentication/dispatch remains untested because agy is not installed in this Ubuntu environment.
 
-These are documentation deliverables; no application implementation or Antigravity execution has occurred.
+These deliverables include documentation, runner scripts, and a completed isolated implementation pilot. See PILOT-REPORT.md; no production application has been built.
 
 ## In progress
 
 - Discussing the workflow with the user.
-- Ready to select a first application project and test a bounded implementation assignment.
+- Ready to select the first real application project after the isolated pilot passed.
 
 ## Next
 
@@ -35,7 +38,7 @@ These are documentation deliverables; no application implementation or Antigravi
 
 ## Blockers and unknowns
 
-- Antigravity CLI read-only connection and shared-workspace reading verified after installation. See CONNECTION-TEST.md. Editing, test execution permissions, and skill loading remain to be tested with the first real assignment.
+- Antigravity editing, scoped test execution, and continuation verified in the isolated pilot. Real projects need scoped command permissions. Native skill loading remains untested.
 - First application project and requirements: not yet selected.
 - Skill loading in Antigravity: not yet established; provide explicit guidance in the handoff until verified.
 - Stitch: tool definitions inspected; project-specific access/generation has not been tested. No design generated for the starter.

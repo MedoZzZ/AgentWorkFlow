@@ -15,6 +15,7 @@ The user sets product direction and accepts the result. The coordinator plans an
 - `ARCHITECTURE.md`: components, data, interfaces, and technical decisions.
 - `CI.md`: clean dependency installation, automated checks, failure handling, and merge requirements.
 - `EXECUTION.md`: preflight, automated CLI dispatch, Git checkpoints, and evidence handling.
+- `LINUX.md`: Linux setup, Bash commands, platform rules, and verification limits. Scripts require PowerShell 7.2+ on Windows and Linux.
 - `config.json` and `CONFIGURATION.md`: editable defaults for the model, mode, timeout, CLI path, and discovery checks.
 - `START-HERE.md`: copying this starter and beginning a new chat.
 - `TASK-TEMPLATE.md`: copy into `tasks/TASK-001.md` for each assignment.
@@ -25,7 +26,7 @@ Use local Markdown as the issue tracker. The individual task file is the source 
 
 ## Current integration limit
 
-Antigravity CLI connection and shared-workspace reading passed a read-only test; see CONNECTION-TEST.md. Application edits, command permissions, skill loading, and repair continuation still need verification. Use the recorded CLI path when it is not available on PATH, and confirm availability in new sessions.
+Antigravity CLI reading, editing, scoped test execution, and follow-up continuation passed an isolated pilot; see PILOT-REPORT.md. Native skill loading and real project integrations still need verification. Confirm CLI availability and scoped command permissions in each new environment.
 
 ## Resume a session
 

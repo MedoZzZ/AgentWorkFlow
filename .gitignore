@@ -1,0 +1,3 @@
+# Local execution evidence and disposable pilot workspace
+.pilot/
+workflow/runs/
