@@ -22,7 +22,7 @@ function Get-WorkflowSnapshot {
             if ($attributes -band [IO.FileAttributes]::Directory) {
                 if ((Split-Path $entry -Leaf) -in @('.git','node_modules','.pilot') -or $relative -in @('workflow/runs','workflow/tasks')) { continue }
                 $pending.Push($entry)
-            } elseif ($relative -ne 'workflow/PROGRESS.md') {
+            } elseif ($relative -notin @('workflow/PROGRESS.md','workflow/projects.json')) {
                 $files[$relative] = (Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash
             }
         }
@@ -33,10 +33,14 @@ function Get-WorkflowSnapshot {
     $fingerprint = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($serialized)))
     $revision = $null
     if (Get-Command git -ErrorAction SilentlyContinue) {
-        $head = & git -C $root rev-parse HEAD 2>$null
-        if ($LASTEXITCODE -eq 0) { $revision = "$head" }
+        $savedNativeExit = $global:LASTEXITCODE
+        try {
+            $head = & git -C $root rev-parse HEAD 2>$null
+            if ($LASTEXITCODE -eq 0) { $revision = "$head" }
+        } catch { $revision = $null }
+        finally { $global:LASTEXITCODE = $savedNativeExit }
     }
-    return @{schemaVersion=1; timestampUtc=[DateTime]::UtcNow.ToString('o'); revision=$revision; fingerprint=$fingerprint; files=$sorted; exclusions=@('.git','node_modules','.pilot','workflow/runs','workflow/tasks','workflow/PROGRESS.md')}
+    return @{schemaVersion=1; timestampUtc=[DateTime]::UtcNow.ToString('o'); revision=$revision; fingerprint=$fingerprint; files=$sorted; exclusions=@('.git','node_modules','.pilot','workflow/runs','workflow/tasks','workflow/PROGRESS.md','workflow/projects.json')}
 }
 function Compare-WorkflowSnapshot {
     param($Before, $After)

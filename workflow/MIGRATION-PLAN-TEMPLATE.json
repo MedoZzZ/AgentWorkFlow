@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "migrationId": "MIG-001",
+  "status": "draft",
+  "taskIds": ["TASK-001"],
+  "approvalReference": "",
+  "description": "",
+  "scope": ["migrations/example.sql"],
+  "risk": "",
+  "backupPlan": "",
+  "rollbackProcedure": "",
+  "monitoring": "",
+  "rollForwardPlan": "",
+  "rollbackValidationFile": ""
+}

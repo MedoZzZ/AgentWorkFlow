@@ -1,3 +1,5 @@
 # Local execution evidence and disposable pilot workspace
 .pilot/
 workflow/runs/
+# Local portfolio paths are machine-specific.
+workflow/projects.json

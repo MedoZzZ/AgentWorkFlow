@@ -21,6 +21,7 @@ try {
     $data = Read-WorkflowTask -Path $path
     if ($Status -eq 'in-progress') { throw 'Only the runner starts implementation attempts.' }
     if ($Status -eq 'verified') { throw 'Use Record-Verification.ps1 with independent structured evidence to mark verified.' }
+    if ($Status -eq 'ready-for-verification') { throw 'Use the runner or controller Recheck action to request independent verification.' }
     if ($Status -eq 'ready') { Assert-WorkflowTaskReady -ProjectRoot $root -TaskPath $path -Data $data }
     Set-WorkflowTaskTransition -Path $path -Data $data -Status $Status -Reason $Reason
     Sync-WorkflowProgress $root

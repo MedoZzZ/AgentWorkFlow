@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "decisionId": "ADR-001",
+  "status": "proposed",
+  "title": "",
+  "context": "",
+  "decision": "",
+  "alternatives": "",
+  "consequences": "",
+  "author": "",
+  "taskIds": ["TASK-001"],
+  "approvalReference": "",
+  "supersedes": null
+}

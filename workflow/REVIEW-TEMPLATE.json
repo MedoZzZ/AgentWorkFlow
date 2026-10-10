@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "taskId": "TASK-NNN",
+  "runId": "TASK-NNN-01",
+  "verdict": "blocked",
+  "reviewer": {"id": "", "contextId": ""},
+  "reviewedRevision": null,
+  "diffReviewed": false,
+  "testChangesReviewed": false,
+  "unexpectedChangesReviewed": false,
+  "testedFingerprint": "CAPTURE_CURRENT_FINGERPRINT",
+  "taskScopeHash": "CAPTURE_CURRENT_TASK_SCOPE_HASH",
+  "scope": ["src/example.js"],
+  "checks": [{"name": "Approved check name", "status": "unavailable", "required": true, "evidence": "Not run"}],
+  "acceptanceCriteria": [{"name": "AC-1", "status": "unavailable", "required": true, "evidence": "Not reviewed"}]
+}

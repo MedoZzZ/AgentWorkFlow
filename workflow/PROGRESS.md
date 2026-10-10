@@ -73,3 +73,11 @@ No implementation tasks created or dispatched yet.
 ## Update rules
 
 After each dispatch, result, verification, or blocker, update the relevant task file first, then this summary. Link evidence rather than duplicating logs. Do not replace previous failed results with later passes; retain the repair history.
+
+## Autonomous orchestration build
+
+Implemented the approved workflow scheduler/controller, plan scope and budgets, check capture, review/repair handoff, interruption checkpoints, final review, read-only workflow SSE status and Linux launch instructions. Validation was deferred at the user's explicit request. Real background reasoning after a Codex session ends is not implemented; checkpoint recovery preserves progress for an active coordinator.
+
+## Governance and portfolio additions
+
+Implemented the approved follow-up features from the ApexYard comparison: identified revision-bound reviews and rechecks, decision records, migration/rollback and release readiness gates, and a shared local project registry with read-only portfolio/project SSE views. Existing workflows remain compatible; new draft plans enable the reviewer requirement. Tests and runtime validation remain deferred at the user's request. Review identities and human approvals are recorded claims; stronger authentication/isolation and deployment interception remain separate integrations.

@@ -5,7 +5,7 @@ $script:TaskTransitions = @{
     draft=@('ready','blocked'); ready=@('in-progress','blocked')
     'in-progress'=@('ready-for-verification','failed','interrupted','blocked')
     'ready-for-verification'=@('verified','needs-fix','blocked')
-    'needs-fix'=@('in-progress','blocked'); failed=@('ready','blocked')
+    'needs-fix'=@('in-progress','ready-for-verification','blocked'); failed=@('ready','blocked')
     interrupted=@('ready','blocked'); blocked=@('draft','ready','needs-fix'); verified=@('needs-fix')
 }
 function Read-WorkflowTask {
@@ -46,6 +46,8 @@ function Assert-WorkflowTaskReady {
         $dependency = $index[$id]
         if (-not $dependency.verification -or $dependency.verification.verdict -ne 'verified') { throw "Dependency has no structured verification: $id" }
         if ($dependency.verification.taskScopeHash -ne (Get-WorkflowTaskScopeHash $taskPaths[$id])) { throw "Dependency task scope is stale: $id" }
+        if ($dependency.verification.revisionBound -and $dependency.verification.testedRevision -cne (Get-WorkflowSnapshot $ProjectRoot).revision) { throw "Dependency revision review is stale: $id" }
+        if ($dependency.verification.revisionBound -and (ConvertTo-Json -Compress -InputObject @($dependency.verification.dependencies)) -cne (ConvertTo-Json -Compress -InputObject @($dependency.dependencies))) { throw "Dependency review linkage changed: $id" }
         foreach ($relative in $dependency.verification.files.Keys) {
             $file = Join-Path $ProjectRoot $relative
             $hash = if (Test-Path -LiteralPath $file -PathType Leaf) { (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash } else { $null }

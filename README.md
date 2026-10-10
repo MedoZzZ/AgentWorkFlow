@@ -4,6 +4,10 @@ A reusable framework for creating projects and editing existing ones with an AI 
 
 Requirements, use cases, architecture, UI/UX design, tasks, progress, and verification live in Markdown alongside your project. PowerShell scripts provide preflight checks and Antigravity CLI dispatch with saved execution evidence.
 
+The [approved workflow controller](workflow/ORCHESTRATION.md) adds dependency scheduling, persistent checkpoints, approved check commands, independent review gates, focused repairs and final review. The dashboard shows controller progress through SSE. See [Linux setup](workflow/LINUX.md) for native Linux launch commands. These orchestration additions were built without running tests at the user's request; active Codex reasoning is required for autonomous coordination.
+
+[Governance](workflow/GOVERNANCE.md) adds reviewer identity and revision attestation, technical decision records, migration rollback evidence, release readiness gates and a shared local project registry with portfolio monitoring. These additions are implemented but untested.
+
 **Current status:** a live isolated pilot passed implementation, scoped test execution, conversation continuation, follow-up changes, and independent verification. Runner regression tests cover configuration, permissions, failure reporting, and project concurrency. See [PILOT-REPORT.md](workflow/PILOT-REPORT.md). Hosted CI, live timeout recovery, and project-specific Stitch generation remain unverified.
 
 ## Contents

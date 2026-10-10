@@ -29,6 +29,8 @@ $files = $config.preflight.manifestFiles
     configuredModel = $config.antigravity.model
     cliPath = $cliPath
     cliAvailable = (Test-Path -LiteralPath $cliPath -PathType Leaf)
+    cliExecutable = (Test-WorkflowExecutable $cliPath)
+    dashboardNodeAvailable = [bool](Get-Command node -CommandType Application -ErrorAction SilentlyContinue)
     gitRepository = $gitAvailable
     baselineRevision = $head
     existingChanges = $changes
@@ -37,3 +39,4 @@ $files = $config.preflight.manifestFiles
     workflowPresent = (Test-Path -LiteralPath (Join-Path $root 'workflow/LIFECYCLE.md'))
     baselineChecks = 'Not run: select the actual project commands in CI.md before implementation.'
 } | ConvertTo-Json -Depth 5
+$global:LASTEXITCODE = 0

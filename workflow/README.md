@@ -17,6 +17,9 @@ The user sets product direction and accepts the result. The coordinator plans an
 - `EXECUTION.md`: preflight, automated CLI dispatch, Git checkpoints, and evidence handling.
 - `TASK-STATE.md`: managed task headers, transition commands, and legacy compatibility.
 - `VERIFICATION.md`: file evidence, independent verification, repair limits, recovery, and adapter responsibilities.
+- `ORCHESTRATION.md`: approved plans, sequential scheduler/controller, independent reviews, bounded repairs and recovery.
+- `GOVERNANCE.md`: identified revision-bound reviews, immutable decisions, rollback/release gates and shared project registry.
+- `WORKFLOW-PLAN-TEMPLATE.json`: task/file/command scope and budgets; New-WorkflowPlan.ps1 creates a draft with current hashes.
 - `VALIDATION.md`: actual enhancement test results and unavailable checks.
 - `DASHBOARD.md`: localhost project dashboard, SSE conversation capture, design references, and validation.
 - `LINUX.md`: Linux setup, Bash commands, platform rules, and verification limits. Scripts require PowerShell 7.2+ on Windows and Linux.

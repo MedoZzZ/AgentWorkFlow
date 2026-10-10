@@ -2,13 +2,15 @@
 param(
     [Parameter(Mandatory)][string]$ProjectRoot,
     [Parameter(Mandatory)][string]$TaskFile,
-    [Parameter(Mandatory)][string]$EvidenceFile
+    [Parameter(Mandatory)][string]$EvidenceFile,
+    [switch]$RequireReviewerIdentity
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Platform.ps1')
 . (Join-Path $PSScriptRoot 'Task-State.ps1')
 . (Join-Path $PSScriptRoot 'Evidence.ps1')
 . (Join-Path $PSScriptRoot 'Progress.ps1')
+. (Join-Path $PSScriptRoot 'Workflow-Plan.ps1')
 $root = (Resolve-Path -LiteralPath $ProjectRoot).Path
 $task = (Resolve-Path -LiteralPath $TaskFile).Path
 $prefix = $root.TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar
@@ -19,7 +21,8 @@ try {
     $data = Read-WorkflowTask $task
     if ($data.status -ne 'ready-for-verification') { throw 'Task is not ready for verification.' }
     $evidence = Get-Content -LiteralPath $EvidenceFile -Raw | ConvertFrom-Json -AsHashtable
-    if ($evidence.schemaVersion -ne 1 -or $evidence.taskId -ne $data.taskId -or $evidence.runId -notmatch '^[A-Za-z0-9_-]+$') { throw 'Invalid verification identity/schema.' }
+    if ($evidence.schemaVersion -notin @(1,2) -or $evidence.taskId -ne $data.taskId -or $evidence.runId -notmatch '^[A-Za-z0-9_-]+$') { throw 'Invalid verification identity/schema.' }
+    if ($RequireReviewerIdentity -and $evidence.schemaVersion -ne 2) { throw 'This approved workflow requires schema-2 reviewer identity and revision attestation.' }
     $latest = $data.attempts[-1]
     if ($evidence.runId -ne $latest.runId) { throw 'Verification must reference the latest implementation attempt.' }
     if ($evidence.verdict -notin @('verified','needs-fix','blocked')) { throw 'Invalid verification verdict.' }
@@ -32,6 +35,9 @@ try {
         if ($evidence.verdict -eq 'verified' -and ($check.status -eq 'failed' -or ($check.required -and $check.status -ne 'passed'))) { throw 'Failed or incomplete required checks prevent verification.' }
     }
     $snapshot = Get-WorkflowSnapshot $root
+    $metaPath = Join-Path $runs "$($latest.runId)/metadata.json"
+    $metadata = Get-Content -LiteralPath $metaPath -Raw | ConvertFrom-Json -AsHashtable
+    if ($evidence.schemaVersion -eq 2) { Assert-WorkflowReviewer $evidence $metadata $snapshot }
     if ($evidence.testedFingerprint -ne $snapshot.fingerprint -or $evidence.taskScopeHash -ne (Get-WorkflowTaskScopeHash $task)) { throw 'Verification evidence is stale for the current files/task scope.' }
     if ($evidence.scope -isnot [array] -or -not $evidence.scope.Count) { throw 'Verification requires explicit file scope.' }
     $changes = Get-Content -LiteralPath (Join-Path $runs "$($latest.runId)/changes.json") -Raw | ConvertFrom-Json -AsHashtable
@@ -51,13 +57,20 @@ try {
     $recordPath = Join-Path $directory "$([guid]::NewGuid().ToString('N')).json"
     Write-WorkflowJson $recordPath $evidence
     $data['verification'] = @{files=$fileHashes; taskScopeHash=$evidence.taskScopeHash; record=[IO.Path]::GetRelativePath($root,$recordPath).Replace('\','/'); verdict=$evidence.verdict}
+    if ($evidence.schemaVersion -eq 2) {
+        $data.verification['reviewer']=$evidence.reviewer
+        $data.verification['testedRevision']=$snapshot.revision
+        $data.verification['revisionBound']=$true
+        $data.verification['dependencies']=@($data.dependencies)
+    }
     Set-WorkflowTaskTransition $task $data $evidence.verdict "Independent verification: $($data.verification.record)" $latest.runId $latest.attemptId
     $metaPath = Join-Path $runs "$($latest.runId)/metadata.json"
-    $metadata = Get-Content -LiteralPath $metaPath -Raw | ConvertFrom-Json -AsHashtable
     $metadata['verification'] = $evidence.verdict
     $metadata['verificationRecord'] = $data.verification.record
     $metadata['testedFingerprint'] = $evidence.testedFingerprint
+    if ($evidence.schemaVersion -eq 2) { $metadata['reviewer']=$evidence.reviewer; $metadata['reviewedRevision']=$snapshot.revision }
     Write-WorkflowJson $metaPath $metadata
     Sync-WorkflowProgress $root
     $evidence | ConvertTo-Json -Depth 20
 } finally { $handle.Dispose() }
+$global:LASTEXITCODE=0

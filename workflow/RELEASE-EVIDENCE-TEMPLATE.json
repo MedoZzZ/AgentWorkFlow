@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "releaseId": "release-01",
+  "planHash": "CURRENT_RELEASE_PLAN_SHA256",
+  "testedFingerprint": "CURRENT_PROJECT_FINGERPRINT",
+  "reviewedRevision": null,
+  "reviewer": {"id": "", "contextId": ""},
+  "approval": {"releaseId": "release-01", "target": "staging", "fingerprint": "CURRENT_PROJECT_FINGERPRINT", "approvedBy": "", "reference": ""},
+  "checks": [
+    {"name": "security", "status": "unavailable", "evidence": "Not checked"},
+    {"name": "performance", "status": "unavailable", "evidence": "Not checked"},
+    {"name": "accessibility", "status": "unavailable", "evidence": "Not checked"},
+    {"name": "monitoring", "status": "unavailable", "evidence": "Not checked"},
+    {"name": "documentation", "status": "unavailable", "evidence": "Not checked"},
+    {"name": "QA acceptance", "status": "unavailable", "evidence": "Not checked"}
+  ]
+}

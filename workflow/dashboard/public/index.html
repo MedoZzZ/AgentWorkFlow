@@ -7,11 +7,14 @@
   <a class="brand" href="/"><span class="brand-mark">a<span>›</span></span><span>AgentWorkFlow<small>DEVELOPER WORKSPACE</small></span></a>
   <div class="project-label">CURRENT PROJECT</div>
   <div class="project-box"><span class="project-icon">⌘</span><div><strong id="project-name">Loading project…</strong><small>Local workspace</small></div><span class="local-dot"></span></div>
+  <label class="project-switch-label">Project<select id="project-select" aria-label="Select registered project"><option value="local">Current workspace</option></select></label>
   <nav aria-label="Dashboard sections">
     <button class="nav active" data-view="overview"><span>◈</span>Overview</button>
+    <button class="nav" data-view="portfolio"><span>▦</span>All projects</button>
     <button class="nav" data-view="tasks"><span>▤</span>Tasks <b id="nav-tasks">0</b></button>
     <button class="nav" data-view="conversations"><span>☷</span>Conversations <b id="nav-runs">0</b></button>
     <button class="nav" data-view="verification"><span>✓</span>Verification</button>
+    <button class="nav" data-view="governance"><span>◇</span>Decisions & release</button>
     <button class="nav" data-view="documents"><span>▧</span>Project documents</button>
   </nav>
   <div class="sidebar-note"><span class="eyebrow">CONNECTED WORKFLOW</span><p><span class="role-dot mint"></span>Codex <small>Coordinator</small></p><p><span class="role-dot purple"></span>Antigravity <small>Executor</small></p><p><span class="role-dot blue"></span>Stitch <small>Design references</small></p></div>
@@ -22,8 +25,11 @@
   <main id="main" tabindex="-1">
     <div class="page-heading"><div><div class="eyebrow">WORKFLOW OBSERVATORY</div><h1 id="page-title">Project overview</h1><p id="page-subtitle">From the first requirement to independently verified work.</p></div><div class="read-only-pill">◉ &nbsp; Live project evidence</div></div>
     <div id="notice" class="notice" role="status" hidden></div>
+    <section id="portfolio" class="view" hidden><div id="portfolio-list" class="task-grid"></div></section>
+    <section id="governance" class="view" hidden><div id="governance-list" class="task-grid"></div></section>
     <section id="overview" class="view">
       <div class="metrics" id="metrics"></div>
+      <section class="panel workflow-panel"><div class="panel-heading"><div><h2>Approved workflows</h2><p>Controller checkpoints, repair stages, and stopping conditions</p></div><span class="badge neutral">READ-ONLY</span></div><div id="workflow-status" class="progress-content"></div></section>
       <div class="overview-grid">
         <section class="panel lifecycle-panel"><div class="panel-heading"><div><h2>Workflow at a glance</h2><p>Actual task states from your project files</p></div><span class="badge neutral">FILE-BASED</span></div><div id="lifecycle" class="lifecycle"></div><div class="panel-footer"><span class="local-dot"></span>Execution and verification are tracked separately.</div></section>
         <section class="panel"><div class="panel-heading"><div><h2>Needs attention</h2><p>Blockers, repairs, and pending reviews</p></div><span class="attention-icon">↗</span></div><div id="attention" class="card-list"></div></section>

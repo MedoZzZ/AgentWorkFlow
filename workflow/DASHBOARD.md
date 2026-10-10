@@ -46,3 +46,11 @@ Stitch project: 18323338688219883686; screen: dce7b56a92e4441fb287b9f3114cab3f; 
 - CI includes the new suites on Windows and Ubuntu; hosted results and a new Linux run remain pending.
 
 Official stream contract: https://antigravity.google/docs/cli/headless/ . Local run logs may contain private prompts/output; keep them local and review before sharing.
+
+## Workflow controller status
+
+The overview includes approved workflow checkpoints and the read-only /api/workflows endpoint. The existing project SSE feed carries controller phases, pending/currently verified tasks, active run and attempt, limits, repair/review history, final-review status and stop reasons. No execution controls were added. See ORCHESTRATION.md and LINUX.md for startup and coordinator actions. Restart an already running server to load the updated API code; then reload the page. These controller/dashboard additions were not tested at the user's request.
+
+## Portfolio and governance
+
+The dashboard adds All projects, a registered-project selector, and Decisions & release. /api/projects aggregates registered workspaces; /api/governance returns decision, migration and release records. Selected-project API/SSE requests carry projectId, and portfolio=1 selects portfolio SSE. Registry entries explicitly permit local reads and never trigger project execution. Review evidence shows reviewer identity/context and revision; schema-2 reviews are flagged stale after revision, scoped-file, requirement or dependency-linkage changes. Release reports are historical and must be reevaluated before any release operation. See GOVERNANCE.md. Restart an existing server and reload the page for the new API/UI. Testing remains deferred.

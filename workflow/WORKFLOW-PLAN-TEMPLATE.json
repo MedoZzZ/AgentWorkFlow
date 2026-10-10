@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "workflowId": "approved-project-01",
+  "approvalReference": "",
+  "coordinatorMode": "active-session",
+  "allowDeployment": false,
+  "governance": {"requireReviewerIdentity": true},
+  "limits": {"maxRepairAttempts": 3, "taskTimeoutSeconds": 600, "workflowTimeoutSeconds": 7200},
+  "tasks": [{
+    "taskId": "TASK-001",
+    "file": "workflow/tasks/TASK-001.md",
+    "scopeHash": "REPLACE_WITH_CURRENT_TASK_SCOPE_SHA256",
+    "dependencies": [],
+    "priority": 0,
+    "allowedFiles": ["src/example.js"],
+    "checks": [{"name": "JavaScript syntax", "executable": "node", "arguments": ["--check", "src/example.js"], "workingDirectory": "", "timeoutSeconds": 30, "platform": "all", "required": true}],
+    "acceptanceCriteria": [{"name": "AC-1", "required": true}],
+    "requiresDecisionRecord": false,
+    "decisionRecords": [],
+    "requiresMigrationPlan": false,
+    "migrationPlans": []
+  }]
+}

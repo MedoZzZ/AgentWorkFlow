@@ -23,3 +23,11 @@ CI exit-code follow-up: reproduced a passing configuration suite whose CI-style 
 The tests create isolated temporary fixtures and remove only their own resolved temporary directories. They use no model credentials. Timeout behavior uses a real local pwsh process, while interrupted task recovery uses persisted simulated abandoned-run evidence.
 
 Implemented components and operational boundaries are described in TASK-STATE.md and VERIFICATION.md. Approval/evidence strings are records rather than authenticated human attestations. Snapshot exclusions and manual process inspection remain relevant. User acceptance is pending, and deployment/release requires separate authorization.
+
+## Autonomous orchestration build — validation deferred
+
+The user approved implementation and explicitly requested building without testing. Added approved-plan validation, deterministic graph scheduling, controller checkpoints/lease, command capture, independent review and focused repair gates, process-aware recovery, final review, workflow SSE observability and Linux launch/setup support. No new code execution, parser checks, test suites, build commands, Linux dispatch or real model/API calls were performed for this change. Existing historical results do not validate these additions. New orchestration integration tests remain to be added and run when validation is requested.
+
+## Governance and portfolio build — validation deferred
+
+Added schema-2 reviewer/context/revision attestation, revision/dependency review invalidation, coordinator rechecks without new implementation attempts, immutable technical decision records, approved migration/rollback evidence gates, read-only release readiness evaluation, local project registration, portfolio SSE, project switching and governance views. New plans enable identity requirements; existing schema-1 evidence remains compatible. Identities/approvals are recorded attestations and are not authenticated by this shared file-based system. No tests, syntax/parser checks, builds, live executor calls, migration/rollback actions, releases or Linux validation were run for these additions. The dashboard server must be restarted to load the new API; no runtime validation is claimed.

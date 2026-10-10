@@ -3,10 +3,13 @@ import { readFile, readdir, stat, realpath, open } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 const assets = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 const runPattern = /^[A-Za-z0-9_-]+$/;
-const documents = ['PROGRESS.md', 'PROJECT-SPEC.md', 'USE-CASES.md', 'DESIGN.md', 'ARCHITECTURE.md', 'CI.md'];
+const documents = ['PROGRESS.md', 'PROJECT-SPEC.md', 'USE-CASES.md', 'DESIGN.md', 'ARCHITECTURE.md', 'CI.md', 'ORCHESTRATION.md', 'GOVERNANCE.md', 'LINUX.md'];
+const executeFile = promisify(execFile);
 const limit = 2 * 1024 * 1024;
 const hash = text => createHash('sha256').update(text).digest('hex').toUpperCase();
 const inside = (root, target) => { const relative = path.relative(root, target); return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative)); };
@@ -14,6 +17,19 @@ const inside = (root, target) => { const relative = path.relative(root, target);
 export async function createDashboard({ projectRoot, intervalMs = 1000 } = {}) {
   const root = await realpath(projectRoot || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..'));
   const clients = new Set();
+  const readers = new Map();
+  let revisionCache = { updated: 0, value: null };
+  let revisionPending;
+  async function revision() {
+    if (Date.now() - revisionCache.updated < intervalMs) return revisionCache.value;
+    if (!revisionPending) revisionPending = (async () => {
+      let value = null;
+      try { value = (await executeFile('git', ['-C', root, 'rev-parse', 'HEAD'], { timeout: 2000, maxBuffer: 4096, windowsHide: true })).stdout.trim(); }
+      catch { /* No committed baseline: fingerprints still bind the review. */ }
+      revisionCache = { updated: Date.now(), value }; return value;
+    })().finally(() => { revisionPending = undefined; });
+    return revisionPending;
+  }
   async function safePath(relative) {
     const target = path.resolve(root, relative);
     if (!inside(root, target)) throw new Error('Path outside project');
@@ -46,6 +62,7 @@ export async function createDashboard({ projectRoot, intervalMs = 1000 } = {}) {
   }
   async function tasks() {
     const result = [];
+    const currentRevision = await revision();
     async function walk(relative) {
       for (const entry of await entries(relative)) {
         const file = `${relative}/${entry.name}`;
@@ -73,6 +90,8 @@ export async function createDashboard({ projectRoot, intervalMs = 1000 } = {}) {
             }
             const scope = content.replace(/^<!-- workflow-task\r?\n[\s\S]*?\r?\n-->\r?\n/, '').replace(/^Status: .*\r?\n/gm, '').split(/^## Executor result/m)[0];
             if (hash(scope) !== task.verification?.taskScopeHash) verificationCurrent = false;
+            if (task.verification?.revisionBound && task.verification.testedRevision !== currentRevision) verificationCurrent = false;
+            if (task.verification?.revisionBound && JSON.stringify(task.verification.dependencies) !== JSON.stringify(task.dependencies)) verificationCurrent = false;
           }
           result.push({ ...task, file, title: content?.match(/^# (.+)$/m)?.[1] || task.taskId, content, verificationCurrent });
         }
@@ -93,14 +112,88 @@ export async function createDashboard({ projectRoot, intervalMs = 1000 } = {}) {
     return result.sort((a, b) => (b.startedUtc || '').localeCompare(a.startedUtc || ''));
   }
   async function project() {
-    const [taskList, runList, docs] = await Promise.all([tasks(), runs(), Promise.all(documents.map(async name => [name, await text(`workflow/${name}`)]))]);
-    return { name: path.basename(root), root, tasks: taskList, runs: runList, documents: Object.fromEntries(docs), summary: {
+    const [taskList, runList, workflowList, records, docs] = await Promise.all([tasks(), runs(), workflows(), governance(), Promise.all(documents.map(async name => [name, await text(`workflow/${name}`)]))]);
+    return { name: path.basename(root), root, revision: await revision(), tasks: taskList, runs: runList, workflows: workflowList, governance: records, documents: Object.fromEntries(docs), summary: {
       total: taskList.filter(task => task.status !== 'unmanaged').length,
       verified: taskList.filter(task => task.status === 'verified' && task.verificationCurrent).length,
       active: taskList.filter(task => task.status === 'in-progress').length,
       review: taskList.filter(task => task.status === 'ready-for-verification').length,
       blocked: taskList.filter(task => ['blocked', 'failed', 'interrupted', 'needs-fix'].includes(task.status) || task.pendingDependencies.length).length,
     } };
+  }
+  async function governance() {
+    async function records(directory, latestOnly = false) {
+      const result = [];
+      for (const entry of await entries(directory)) {
+        if (entry.isFile() && entry.name.endsWith('.json') && !latestOnly) result.push({ file: `${directory}/${entry.name}`, record: await json(`${directory}/${entry.name}`) });
+        else if (entry.isDirectory() && latestOnly && runPattern.test(entry.name)) {
+          const record = await json(`${directory}/${entry.name}/latest.json`);
+          if (record) result.push({ file: `${directory}/${entry.name}/latest.json`, record });
+        }
+      }
+      return result;
+    }
+    const [decisions, migrations, releases] = await Promise.all([records('workflow/decisions'), records('workflow/migrations'), records('workflow/runs/_releases', true)]);
+    // Reports are historical; indicate stale referenced inputs and approvals independently.
+    for (const item of releases) item.revisionCurrent = item.record?.reviewedRevision === await revision();
+    return { decisions, migrations, releases };
+  }
+  async function registry() {
+    const data = await json('workflow/projects.json');
+    if (!data) return [];
+    if (data.schemaVersion !== 1 || !Array.isArray(data.projects) || data.projects.length > 50) throw new Error('Invalid project registry');
+    const ids = new Set(['local']), paths = new Set();
+    return data.projects.map(entry => {
+      if (!entry || !runPattern.test(entry.id) || ids.has(entry.id) || typeof entry.name !== 'string' || typeof entry.root !== 'string' || !path.isAbsolute(entry.root) || !['active', 'archived'].includes(entry.status)) throw new Error('Invalid registered project');
+      const normalized = process.platform === 'win32' ? path.resolve(entry.root).toLowerCase() : path.resolve(entry.root);
+      if (paths.has(normalized)) throw new Error('Duplicate registered project path');
+      paths.add(normalized); ids.add(entry.id); return entry;
+    });
+  }
+  async function projectReader(id = 'local') {
+    if (id === 'local') return { project, runDetails, workflows, governance };
+    if (!runPattern.test(id)) throw new Error('Invalid Project ID');
+    const entry = (await registry()).find(item => item.id === id);
+    if (!entry) throw new Error('Project is not registered');
+    const canonical = await realpath(entry.root);
+    const key = `${id}:${canonical}`;
+    if (!readers.has(key)) readers.set(key, await createDashboard({ projectRoot: canonical, intervalMs }));
+    // Evict obsolete readers after a registry path update, without opening extra listeners.
+    for (const [other, reader] of readers) if (other.startsWith(`${id}:`) && other !== key) { await reader.close(); readers.delete(other); }
+    return readers.get(key);
+  }
+  async function portfolio() {
+    const entries = [{ id: 'local', name: path.basename(root), root, status: 'active' }, ...await registry()];
+    const projects = [];
+    for (const entry of entries) {
+      try {
+        const value = await (await projectReader(entry.id)).project();
+        projects.push({ ...entry, root: value.root, summary: value.summary, workflows: value.workflows, releases: value.governance.releases,
+          attention: value.tasks.filter(task => ['blocked','failed','interrupted','needs-fix','ready-for-verification','invalid'].includes(task.status) || task.verificationCurrent === false || task.pendingDependencies.length).map(task => ({ taskId: task.taskId, status: task.status, title: task.title, stale: task.verificationCurrent === false })) });
+      } catch { projects.push({ ...entry, error: 'Project evidence unavailable; check its registered local path.' }); }
+    }
+    return { projects };
+  }
+  async function workflows() {
+    const result = [];
+    const scopedTasks = await tasks();
+    for (const entry of await entries('workflow/runs/_workflows')) {
+      if (!entry.isDirectory() || !runPattern.test(entry.name)) continue;
+      const state = await json(`workflow/runs/_workflows/${entry.name}/state.json`);
+      if (!state) continue;
+      if (state.parseError || state.schemaVersion !== 1 || state.workflowId !== entry.name) {
+        result.push({ workflowId: entry.name, phase: 'invalid', stopReason: 'Malformed workflow checkpoint', updatedUtc: '' });
+        continue;
+      }
+      const plan = await json(`workflow/runs/_workflows/${entry.name}/approved-plan.json`);
+      const ids = Array.isArray(plan?.tasks) ? plan.tasks.map(task => task.taskId) : [];
+      // State is a checkpoint, so explicitly flag current verification instead of inventing live execution.
+      const currentCompleted = ids.filter(id => scopedTasks.some(task => task.taskId === id && task.verificationCurrent && (!plan.governance?.requireReviewerIdentity || (task.verification?.revisionBound && task.verification.reviewer?.id && task.verification.reviewer?.contextId))));
+      const currentPending = ids.filter(id => !currentCompleted.includes(id));
+      result.push({ ...state, currentCompleted, currentPending, completionCurrent: state.phase === 'complete' && ids.length > 0 && !currentPending.length,
+        elapsedSecondsAtCheckpoint: Math.max(0, Math.floor((Date.parse(state.updatedUtc) - Date.parse(state.startedUtc)) / 1000)) || 0 });
+    }
+    return result.sort((a, b) => (b.updatedUtc || '').localeCompare(a.updatedUtc || ''));
   }
   async function runDetails(id) {
     if (!runPattern.test(id)) throw new Error('Invalid Run ID');
@@ -122,17 +215,23 @@ export async function createDashboard({ projectRoot, intervalMs = 1000 } = {}) {
     if (req.method !== 'GET') return sendJson(res, 405, { error: 'Read-only dashboard' });
     try {
       const url = new URL(req.url, `http://${host}`);
-      if (url.pathname === '/api/project') return sendJson(res, 200, await project());
+      if (url.pathname === '/api/projects') return sendJson(res, 200, await portfolio());
+      const selectedId = url.searchParams.get('projectId') || 'local';
+      if (!runPattern.test(selectedId)) return sendJson(res, 400, { error: 'Invalid Project ID' });
+      const selected = await projectReader(selectedId);
+      if (url.pathname === '/api/project') return sendJson(res, 200, await selected.project());
+      if (url.pathname === '/api/workflows') return sendJson(res, 200, await selected.workflows());
+      if (url.pathname === '/api/governance') return sendJson(res, 200, await selected.governance());
       if (url.pathname.startsWith('/api/runs/')) {
         const id = decodeURIComponent(url.pathname.slice('/api/runs/'.length));
         if (!runPattern.test(id)) return sendJson(res, 400, { error: 'Invalid Run ID' });
-        const detail = await runDetails(id);
+        const detail = await selected.runDetails(id);
         return sendJson(res, detail ? 200 : 404, detail || { error: 'Run not found' });
       }
       if (url.pathname === '/api/events') {
         const id = url.searchParams.get('runId');
         if (id && !runPattern.test(id)) return sendJson(res, 400, { error: 'Invalid Run ID' });
-        if (id && !await runDetails(id)) return sendJson(res, 404, { error: 'Run not found' });
+        if (id && !await selected.runDetails(id)) return sendJson(res, 404, { error: 'Run not found' });
         const lastId = req.headers['last-event-id'] || url.searchParams.get('after') || '0';
         if (!/^\d+$/.test(lastId) || !Number.isSafeInteger(Number(lastId))) return sendJson(res, 400, { error: 'Invalid event cursor' });
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
@@ -148,15 +247,18 @@ export async function createDashboard({ projectRoot, intervalMs = 1000 } = {}) {
           busy = true;
           try {
             if (!id) {
-              const snapshot = await project();
+              const snapshot = url.searchParams.get('portfolio') === '1' ? await portfolio() : await (await projectReader(selectedId)).project();
               const serialized = JSON.stringify(snapshot);
               if (serialized !== lastSnapshot) { send('project', snapshot); lastSnapshot = serialized; }
             } else {
-              const detail = await runDetails(id);
+              const reader = await projectReader(selectedId);
+              const detail = await reader.runDetails(id);
               const serialized = JSON.stringify(detail);
               if (serialized !== lastSnapshot) { send('run', detail); lastSnapshot = serialized; }
               try {
-                const file = await safePath(`workflow/runs/${id}/events.ndjson`);
+                const selectedRoot = reader.root || root;
+                const file = path.resolve(selectedRoot, `workflow/runs/${id}/events.ndjson`);
+                if (!inside(selectedRoot, await realpath(file))) throw new Error('Symbolic link outside project');
                 const info = await stat(file);
                 if (info.size < offset) { offset=0; buffer=Buffer.alloc(0); sequence=0; skip=0; oversized=false; send('reset', {}); }
                 const handle = await open(file, 'r');
@@ -197,7 +299,7 @@ export async function createDashboard({ projectRoot, intervalMs = 1000 } = {}) {
       res.writeHead(200,{'Content-Type':asset.endsWith('.css')?'text/css':asset.endsWith('.js')?'text/javascript':'text/html','Cache-Control':'no-store'}); res.end(content);
     } catch { if (!res.headersSent) sendJson(res,500,{error:'Unable to read project evidence'}); else res.destroy(); }
   });
-  return { server, project, runDetails, async listen(port=4317) { await new Promise((resolve,reject)=>{ server.once('error',reject); server.listen(port,'127.0.0.1',resolve); }); return `http://127.0.0.1:${server.address().port}`; }, async close() { for(const client of clients) client.destroy(); await new Promise(resolve=>server.close(resolve)); } };
+  return { root, server, project, runDetails, workflows, governance, async listen(port=4317) { await new Promise((resolve,reject)=>{ server.once('error',reject); server.listen(port,'127.0.0.1',resolve); }); return `http://127.0.0.1:${server.address().port}`; }, async close() { for(const client of clients) client.destroy(); for(const reader of readers.values()) await reader.close(); readers.clear(); if(server.listening) await new Promise(resolve=>server.close(resolve)); } };
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args=process.argv.slice(2); let projectRoot,port=4317;

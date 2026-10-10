@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "workflowId": "approved-project-01",
+  "planHash": "CURRENT_APPROVED_PLAN_SHA256",
+  "testedFingerprint": "CURRENT_PROJECT_FINGERPRINT",
+  "reviewedRevision": null,
+  "reviewer": {"id": "", "contextId": ""},
+  "verdict": "blocked",
+  "scopeReviewed": false,
+  "evidence": "",
+  "taskRecords": {"TASK-001": "workflow/runs/RUN/verification/RECORD.json"}
+}

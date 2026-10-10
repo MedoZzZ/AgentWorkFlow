@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrationId": "MIG-001",
+  "status": "unavailable",
+  "rollbackHash": "SHA256_OF_EXACT_ROLLBACK_PROCEDURE_UTF8",
+  "verifiedBy": "",
+  "evidence": "",
+  "inputFiles": {"migrations/rollback-fixture.sql": "CURRENT_FILE_SHA256"}
+}

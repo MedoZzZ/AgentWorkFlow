@@ -10,7 +10,11 @@ param(
     [ValidatePattern('^[a-zA-Z0-9._-]+$')][string]$Model,
     [ValidateRange(0,20)][int]$MaxRepairAttempts = 3,
     [switch]$Stream,
-    [string]$ConfigPath
+    [string]$ConfigPath,
+    [string]$RepairFile,
+    [string[]]$AllowedFiles,
+    [ValidatePattern('^[A-Za-z0-9_-]+$')][string]$WorkflowId,
+    [scriptblock]$OnAttemptStarted
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Platform.ps1')
@@ -31,6 +35,7 @@ if (-not $task.StartsWith($prefix, (Get-WorkflowPathComparison))) { throw 'Task 
 $CliPath = Resolve-WorkflowCli -ConfiguredPath $CliPath
 if (-not (Test-Path -LiteralPath $CliPath -PathType Leaf)) { throw 'Antigravity CLI was not found.' }
 $CliPath = (Resolve-Path -LiteralPath $CliPath).Path
+if ($IsLinux -and [IO.Path]::GetExtension($CliPath) -ne '.ps1' -and -not (Test-WorkflowExecutable $CliPath)) { throw 'Linux Antigravity CLI is not executable. Install the native CLI or grant its executable permission.' }
 $runDir = Join-Path $root "workflow/runs/$RunId"
 New-Item -ItemType Directory -Path (Split-Path $runDir) -Force | Out-Null
 $projectLock = $null
@@ -74,12 +79,23 @@ if (-not [IO.Directory]::Exists($runDir)) {
     $instruction = if ($Mode -eq 'plan') { 'Read-only: do not edit files or execute shell commands. Read the task and return the requested report.' } else { 'Execute only the assigned task. Record actual checks and evidence in its Executor result section. Mark ready-for-verification only; never verified. Preserve existing user changes.' }
     if ($taskData) { $instruction += ' The runner owns the workflow-task JSON header and Status line: do not edit them. Report your result in the Executor result section.' }
     $prompt = "Project root: $root`nTask file: $task`n$instruction`nRead workflow/ANTIGRAVITY-HANDOFF.md if present, relevant project instructions, and linked specifications. Report missing access explicitly."
+    if ($AllowedFiles) { $prompt += "`nApproved editable files (exact paths): $($AllowedFiles -join ', '). Stop and report if other edits are needed." }
+    if ($RepairFile) {
+        $repairInstructions = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $RepairFile).Path)
+        if ([string]::IsNullOrWhiteSpace($repairInstructions)) { throw 'Repair instructions cannot be empty.' }
+        $prompt += "`nFocused coordinator repair findings:`n$repairInstructions`nPreserve the original requirements, user edits, and prior attempt evidence."
+        $repairInstructions | Set-Content -LiteralPath (Join-Path $runDir 'repair.txt') -Encoding utf8
+    }
     $prompt | Set-Content -LiteralPath (Join-Path $runDir 'prompt.txt') -Encoding utf8
     $metadata = [ordered]@{ runId=$RunId; task=$task; mode=$Mode; model=$Model; timeoutSeconds=$TimeoutSeconds; cliPath=$CliPath; configPath=(Resolve-Path -LiteralPath $ConfigPath).Path; startedUtc=[DateTime]::UtcNow.ToString('o'); status='running'; conversationId=$ConversationId; verification='pending' }
     $metaPath = Join-Path $runDir 'metadata.json'
     $metadata['taskManagement'] = if ($taskData) { 'managed' } else { 'legacy-unmanaged' }
     $metadata['maxRepairAttempts'] = $MaxRepairAttempts
     $metadata['processId'] = $PID
+    $metadata['executorIdentity'] = 'antigravity'
+    $metadata['runnerStartedUtc'] = (Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o')
+    if ($WorkflowId) { $metadata['workflowId'] = $WorkflowId }
+    if ($AllowedFiles) { $metadata['allowedFiles'] = $AllowedFiles }
     $metadata['outcome'] = 'running'
     $metadata['outputFormat'] = if ($Stream) { 'stream-json' } else { 'json' }
     if ($taskData) { $metadata['taskId'] = $taskData.taskId }
@@ -90,9 +106,19 @@ if (-not [IO.Directory]::Exists($runDir)) {
         Set-WorkflowTaskTransition -Path $task -Data $taskData -Status 'in-progress' -Reason "Dispatch: workflow/runs/$RunId" -RunId $RunId -AttemptId $attemptId
     }
     Write-WorkflowJson $metaPath $metadata
+    if ($attemptId -and $OnAttemptStarted) { & $OnAttemptStarted $attemptId $RunId }
     $taskFileHash = (Get-FileHash -LiteralPath $task -Algorithm SHA256).Hash
     $taskScopeHash = Get-WorkflowTaskScopeHash $task
     Copy-Item -LiteralPath $task -Destination (Join-Path $runDir 'task-at-dispatch.md')
+    $otherTasks = [Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
+    $taskDirectory = Join-Path $root 'workflow/tasks'
+    if (Test-Path -LiteralPath $taskDirectory) {
+        foreach ($file in Get-ChildItem -LiteralPath $taskDirectory -File -Recurse) {
+            if (-not [string]::Equals($file.FullName,$task,(Get-WorkflowPathComparison))) { $otherTasks[$file.FullName] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash }
+        }
+    }
+    $controllerStatePath = if ($WorkflowId) { Join-Path $root "workflow/runs/_workflows/$WorkflowId/state.json" } else { $null }
+    $controllerStateHash = if ($controllerStatePath -and (Test-Path -LiteralPath $controllerStatePath)) { (Get-FileHash -LiteralPath $controllerStatePath -Algorithm SHA256).Hash } else { $null }
     $taskHeader = if ($taskData) { [regex]::Match([IO.File]::ReadAllText($task), $script:TaskHeaderPattern).Value } else { $null }
     $arguments = @('-p',$prompt,'--mode',$Mode,'--model',$Model,'--output-format',$metadata.outputFormat,'--print-timeout',"${TimeoutSeconds}s")
     if ($ConversationId) { $arguments += @('--conversation',$ConversationId) }
@@ -125,6 +151,16 @@ if (-not [IO.Directory]::Exists($runDir)) {
     if ($Mode -eq 'plan' -and ($changes.Count -or (Get-FileHash -LiteralPath $task -Algorithm SHA256).Hash -ne $taskFileHash)) { $metadata.status = 'unexpected-plan-changes' }
     if ($taskHeader -and [regex]::Match([IO.File]::ReadAllText($task), $script:TaskHeaderPattern).Value -cne $taskHeader) { $metadata.status = 'unexpected-task-state-change' }
     elseif ($taskData -and (Get-WorkflowTaskScopeHash $task) -ne $taskScopeHash) { $metadata.status = 'unexpected-task-scope-change' }
+    if ($AllowedFiles -and @($changes | Where-Object { $_.path -cnotin $AllowedFiles }).Count) { $metadata.status = 'unexpected-file-changes' }
+    $returnedTasks = [Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
+    if (Test-Path -LiteralPath $taskDirectory) {
+        foreach ($file in Get-ChildItem -LiteralPath $taskDirectory -File -Recurse) {
+            if (-not [string]::Equals($file.FullName,$task,(Get-WorkflowPathComparison))) { $returnedTasks[$file.FullName] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash }
+        }
+    }
+    if ($otherTasks.Count -ne $returnedTasks.Count) { $metadata.status = 'unexpected-task-state-change' }
+    foreach ($file in $otherTasks.Keys) { if ($otherTasks[$file] -ne $returnedTasks[$file]) { $metadata.status = 'unexpected-task-state-change' } }
+    if ($controllerStateHash -and (-not (Test-Path -LiteralPath $controllerStatePath) -or (Get-FileHash -LiteralPath $controllerStatePath -Algorithm SHA256).Hash -ne $controllerStateHash)) { $metadata.status = 'unexpected-task-state-change' }
     $metadata['outcome'] = if ($metadata.status -eq 'SUCCESS') { if ($Mode -eq 'plan') { 'planned' } else { 'ready-for-verification' } } else { $metadata.status }
     Write-WorkflowJson $metaPath $metadata
     if ($exitCode -ne 0 -or $metadata.status -ne 'SUCCESS') { throw "Dispatch did not complete successfully. Inspect $runDir. Do not retry automatically." }
@@ -170,3 +206,4 @@ if (-not [IO.Directory]::Exists($runDir)) {
 }
 # SUCCESS is an executor result, not coordinator verification. Permission denials
 # can occur even with SUCCESS; inspect stderr and validate the actual changes.
+$global:LASTEXITCODE=0
